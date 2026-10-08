@@ -10,6 +10,19 @@ html {
 
 body {
   margin: 0;
-  background: #030a1f;
+  min-width: 320px;
+  background: #05070b;
+  color: #f8fafc;
   font-family: Arial, Helvetica, sans-serif;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+a {
+  text-decoration: none;
 }
