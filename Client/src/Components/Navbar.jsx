@@ -2,22 +2,16 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 
 /* ============================================================
-   LAPTOPHUB NAVBAR  v2  (dark only, no cart, blue accent)
-   - Floating glass bar that compacts on scroll
-   - Scroll progress line + cursor spotlight
+   LAPTOPHUB NAVBAR - PRO
+   - Pure black, no animated lines, no glow
+   - Compacts on scroll
    - Mega menu with featured card
    - Command-palette search (Ctrl/Cmd + K), grouped + highlighted
    - Keyboard + screen reader friendly, reduced-motion safe
-   No extra packages - pure React + Tailwind.
+   Pure React + Tailwind. No extra packages.
    ============================================================ */
 
 const BRAND = { support: "support@laptophub.com", phone: "+92 300 1234567" };
-
-const mainLinks = [
-  { name: "Home", path: "/" },
-  { name: "About", path: "/about" },
-  { name: "Contact", path: "/contact" },
-];
 
 const categories = [
   { name: "All Laptops", icon: "💻", desc: "Browse the full collection", path: "/service" },
@@ -37,6 +31,12 @@ const services = [
   { title: "Delivery Support", desc: "Track orders and delivery", path: "/service#delivery" },
   { title: "Warranty", desc: "Warranty coverage", path: "/service#warranty" },
   { title: "After Sales", desc: "Support after purchase", path: "/service#after-sales" },
+];
+
+const mobileLinks = [
+  { name: "Home", path: "/" },
+  { name: "About", path: "/about" },
+  { name: "Contact", path: "/contact" },
 ];
 
 const searchItems = [
@@ -82,72 +82,6 @@ const Chevron = ({ open }) => (
 );
 
 /* ============================================================
-   ANIMATED ZIGZAG LINES BACKGROUND (pure CSS, no glow filter = smoother)
-   ============================================================ */
-
-const ZIGS = [
-  { axis: "x", rev: false, color: "#1d4ed8", step: 70, amp: 36, mid: 60, dur: 6, delay: 0 },
-  { axis: "x", rev: true, color: "#6d28d9", step: 90, amp: 30, mid: 50, dur: 7.5, delay: 1.5 },
-  { axis: "x", rev: false, color: "#0369a1", step: 55, amp: 42, mid: 70, dur: 8, delay: 3.5 },
-  { axis: "x", rev: true, color: "#3730a3", step: 80, amp: 34, mid: 60, dur: 6.5, delay: 4.5 },
-  { axis: "y", rev: false, color: "#1d4ed8", step: 20, amp: 26, mid: 200, dur: 4, delay: 0.8 },
-  { axis: "y", rev: true, color: "#6d28d9", step: 20, amp: 26, mid: 480, dur: 4, delay: 2.2 },
-  { axis: "y", rev: false, color: "#0369a1", step: 20, amp: 26, mid: 760, dur: 4.5, delay: 3.6 },
-  { axis: "y", rev: true, color: "#3730a3", step: 20, amp: 26, mid: 1020, dur: 4.2, delay: 5 },
-];
-
-const buildZigzag = ({ axis, step, amp, mid }) => {
-  if (axis === "x") {
-    let d = `M0,${mid}`;
-    for (let x = step, i = 1; x <= 1200 + step; x += step, i++) d += ` L${x},${mid + (i % 2 ? -amp : amp)}`;
-    return d;
-  }
-  let d = `M${mid},0`;
-  for (let y = step, i = 1; y <= 120 + step; y += step, i++) d += ` L${mid + (i % 2 ? -amp : amp)},${y}`;
-  return d;
-};
-
-function LinesBackground() {
-  const paths = useMemo(() => ZIGS.map((z) => ({ ...z, d: buildZigzag(z) })), []);
-  return (
-    <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-3xl">
-      <style>{`
-        @keyframes lh-zig {
-          0%   { stroke-dashoffset: 0.22; opacity: 0; }
-          8%   { opacity: .8; }
-          62%  { opacity: .8; }
-          70%  { stroke-dashoffset: -1; opacity: 0; }
-          100% { stroke-dashoffset: -1; opacity: 0; }
-        }
-        @media (prefers-reduced-motion: reduce) { .lh-zig { animation: none !important; opacity: .25 !important; } }
-      `}</style>
-      <svg
-        className="absolute inset-0 h-full w-full"
-        viewBox="0 0 1200 120"
-        preserveAspectRatio="none"
-        style={{ WebkitMaskImage: "linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent)", maskImage: "linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent)" }}
-      >
-        {paths.map((p, i) => (
-          <g key={i} fill="none" strokeLinejoin="round" strokeLinecap="round">
-            <path d={p.d} stroke={p.color} strokeOpacity="0.12" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-            <path
-              d={p.d}
-              pathLength="1"
-              stroke={p.color}
-              strokeWidth="1.6"
-              strokeDasharray="0.22 1.3"
-              vectorEffect="non-scaling-stroke"
-              className="lh-zig"
-              style={{ opacity: 0, animation: `lh-zig ${p.dur}s linear ${p.delay}s infinite ${p.rev ? "reverse" : "normal"}` }}
-            />
-          </g>
-        ))}
-      </svg>
-    </div>
-  );
-}
-
-/* ============================================================
    HELPERS
    ============================================================ */
 
@@ -168,9 +102,7 @@ const Highlight = ({ text, query }) => {
 const focusRing = "outline-none focus-visible:ring-2 focus-visible:ring-blue-500/70";
 const iconBtn = `relative flex h-11 w-11 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white ${focusRing}`;
 const dropdown =
-  "lh-pop absolute top-full z-50 mt-3 rounded-2xl border border-white/10 bg-[#0a1226]/95 shadow-2xl shadow-black/80 backdrop-blur-xl";
-const underline =
-  "after:absolute after:inset-x-4 after:-bottom-0.5 after:h-px after:scale-x-0 after:bg-gradient-to-r after:from-transparent after:via-blue-400 after:to-transparent after:transition-transform after:duration-300";
+  "lh-pop absolute top-full z-50 mt-3 rounded-2xl border border-white/10 bg-[#0a0a0a] shadow-2xl shadow-black";
 
 /* ============================================================
    NAVBAR
@@ -192,8 +124,6 @@ export default function Navbar() {
 
   const searchRef = useRef(null);
   const listRef = useRef(null);
-  const shellRef = useRef(null);
-  const barRef = useRef(null);
 
   const toggle = (name) => setMenu((c) => (c === name ? null : name));
   const servicesActive = location.pathname.startsWith("/service");
@@ -215,7 +145,7 @@ export default function Navbar() {
     setOpen(false);
   }, [location.pathname, location.hash]);
 
-  /* lock page scroll while search is open */
+  /* lock page scroll while search or mobile menu is open */
   useEffect(() => {
     document.body.style.overflow = searchOpen ? "hidden" : "";
     return () => {
@@ -223,30 +153,25 @@ export default function Navbar() {
     };
   }, [searchOpen]);
 
-  /* scroll: compact mode + progress line (rAF throttled, no re-render for progress) */
+  /* compact mode on scroll (rAF throttled) */
   useEffect(() => {
     let raf = 0;
     const update = () => {
       raf = 0;
-      const y = window.scrollY;
-      setScrolled(y > 24);
-      const max = document.documentElement.scrollHeight - window.innerHeight;
-      if (barRef.current) barRef.current.style.transform = `scaleX(${max > 0 ? Math.min(y / max, 1) : 0})`;
+      setScrolled(window.scrollY > 24);
     };
     const onScroll = () => {
       if (!raf) raf = requestAnimationFrame(update);
     };
     update();
     window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
     return () => {
       window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
       if (raf) cancelAnimationFrame(raf);
     };
   }, []);
 
-  /* wishlist count: persisted, and other pages can update it with
+  /* wishlist count: persisted. Other pages can update it with
      window.dispatchEvent(new CustomEvent("laptophub:wishlist", { detail: 3 })) */
   useEffect(() => {
     try {
@@ -335,23 +260,14 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", onDown);
   }, []);
 
-  /* cursor spotlight (writes CSS vars, no re-render) */
-  const onMove = (e) => {
-    const el = shellRef.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    el.style.setProperty("--mx", `${e.clientX - r.left}px`);
-    el.style.setProperty("--my", `${e.clientY - r.top}px`);
-  };
-
-  const linkBase = `relative rounded-full px-4 py-2 text-sm font-semibold transition ${focusRing} ${underline}`;
+  const linkBase = `relative rounded-full px-4 py-2 text-sm font-semibold transition ${focusRing}`;
   const navLink = ({ isActive }) =>
-    `${linkBase} ${isActive ? "text-white after:scale-x-100" : "text-white/60 hover:text-white hover:after:scale-x-100"}`;
+    `${linkBase} ${isActive ? "bg-white/10 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"}`;
   const dropBtn = (active) =>
-    `flex items-center gap-1 ${linkBase} ${active ? "text-white after:scale-x-100" : "text-white/60 hover:text-white hover:after:scale-x-100"}`;
+    `flex items-center gap-1 ${linkBase} ${active ? "bg-white/10 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"}`;
 
   const badge =
-    "absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-[#070d1f] bg-blue-500 px-1 text-[10px] font-bold text-white";
+    "absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-black bg-blue-500 px-1 text-[10px] font-bold text-white";
 
   return (
     <>
@@ -363,31 +279,10 @@ export default function Navbar() {
 
       <header className={`sticky top-0 z-[100] px-3 transition-[padding] duration-300 sm:px-5 ${scrolled ? "pt-2" : "pt-3"}`}>
         <div
-          ref={shellRef}
-          onMouseMove={onMove}
-          className={`group relative mx-auto max-w-7xl rounded-3xl border bg-[#070d1f]/90 backdrop-blur-xl transition-[box-shadow,border-color] duration-300 ${
-            scrolled
-              ? "border-blue-500/20 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.9)]"
-              : "border-white/10 shadow-2xl shadow-black/60"
+          className={`relative mx-auto max-w-7xl rounded-3xl border bg-black transition-[box-shadow] duration-300 ${
+            scrolled ? "border-white/15 shadow-[0_20px_60px_-15px_rgba(0,0,0,1)]" : "border-white/10 shadow-2xl shadow-black"
           }`}
         >
-          <LinesBackground />
-
-          {/* cursor spotlight */}
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 z-[1] rounded-3xl opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-            style={{ background: "radial-gradient(380px circle at var(--mx, 50%) var(--my, 50%), rgba(59,130,246,0.10), transparent 60%)" }}
-          />
-
-          {/* top accent line */}
-          <div className="pointer-events-none absolute inset-x-10 -top-px z-10 h-px bg-gradient-to-r from-transparent via-blue-500 to-transparent" />
-
-          {/* scroll progress */}
-          <div aria-hidden="true" className="pointer-events-none absolute inset-x-6 bottom-0 z-10 h-[2px] overflow-hidden rounded-full">
-            <div ref={barRef} className="h-full origin-left bg-gradient-to-r from-blue-600 via-cyan-400 to-blue-500" style={{ transform: "scaleX(0)" }} />
-          </div>
-
           {/* ANNOUNCEMENT STRIP (collapses on scroll) */}
           <div className={`relative z-10 hidden grid-rows-[1fr] transition-[grid-template-rows] duration-300 md:grid ${scrolled ? "!grid-rows-[0fr]" : ""}`}>
             <div className="overflow-hidden">
@@ -410,7 +305,7 @@ export default function Navbar() {
             {/* LOGO */}
             <Link to="/" aria-label="LaptopHub home" className={`flex shrink-0 items-center gap-3 rounded-2xl ${focusRing}`}>
               <span
-                className={`flex items-center justify-center rounded-2xl border border-blue-500/40 bg-[#030816] font-black text-white shadow-[0_0_20px_rgba(59,130,246,0.3)] transition-all duration-300 ${
+                className={`flex items-center justify-center rounded-2xl border border-white/15 bg-black font-black text-white transition-all duration-300 ${
                   scrolled ? "h-10 w-10 text-base" : "h-12 w-12 text-lg"
                 }`}
               >
@@ -420,12 +315,7 @@ export default function Navbar() {
                 <span className={`block font-black tracking-tight text-white transition-all duration-300 ${scrolled ? "text-xl" : "text-2xl"}`}>
                   LAPTOP<span className="font-semibold text-blue-500">HUB</span>
                 </span>
-                {!scrolled && (
-                  <span className="mt-1.5 flex items-center gap-2 text-[10px] font-semibold tracking-[0.2em] text-white/40">
-                    <span className="h-px w-8 bg-white/30" />
-                    Est. 2026
-                  </span>
-                )}
+                {!scrolled && <span className="mt-1.5 block text-[10px] font-semibold tracking-[0.2em] text-white/40">Est. 2026</span>}
               </span>
             </Link>
 
@@ -453,9 +343,9 @@ export default function Navbar() {
                       </div>
                       <Link
                         to="/service#gaming"
-                        className={`relative flex w-52 shrink-0 flex-col justify-end overflow-hidden rounded-xl border border-blue-500/20 bg-gradient-to-br from-blue-600/25 via-[#0a1226] to-cyan-500/10 p-4 ${focusRing}`}
+                        className={`flex w-52 shrink-0 flex-col justify-end rounded-xl border border-white/10 bg-white/[0.03] p-4 transition hover:bg-white/[0.06] ${focusRing}`}
                       >
-                        <span className="text-xs font-semibold text-blue-300">Featured</span>
+                        <span className="text-xs font-semibold text-blue-400">Featured</span>
                         <span className="mt-1 text-lg font-bold text-white">Gaming laptops</span>
                         <span className="mt-1 text-xs text-white/50">Fast GPUs and high refresh rate displays.</span>
                         <span className="mt-4 inline-flex w-fit rounded-full bg-blue-500 px-3.5 py-1.5 text-xs font-semibold text-white">Shop gaming</span>
@@ -479,7 +369,7 @@ export default function Navbar() {
                         </Link>
                       ))}
                     </div>
-                    <Link to="/contact" className={`mt-2 flex items-center justify-between rounded-xl bg-blue-500/10 px-4 py-3 text-sm font-semibold text-blue-300 transition hover:bg-blue-500/20 ${focusRing}`}>
+                    <Link to="/contact" className={`mt-2 flex items-center justify-between rounded-xl bg-white/5 px-4 py-3 text-sm font-semibold text-blue-400 transition hover:bg-white/10 ${focusRing}`}>
                       Need help choosing a laptop? <span aria-hidden="true">→</span>
                     </Link>
                   </div>
@@ -492,7 +382,6 @@ export default function Navbar() {
 
             {/* RIGHT SIDE */}
             <div className="flex items-center gap-1 sm:gap-1.5">
-              {/* search pill (desktop) */}
               <button
                 type="button"
                 onClick={openSearch}
@@ -501,7 +390,7 @@ export default function Navbar() {
               >
                 <SearchIcon />
                 <span className="w-24 text-left">Search</span>
-                <kbd className="rounded-md border border-white/10 bg-black/30 px-2 py-0.5 font-mono text-[11px] text-white/50">{isMac ? "⌘ K" : "Ctrl K"}</kbd>
+                <kbd className="rounded-md border border-white/10 bg-black px-2 py-0.5 font-mono text-[11px] text-white/50">{isMac ? "⌘ K" : "Ctrl K"}</kbd>
               </button>
               <button type="button" onClick={openSearch} aria-label="Search" className={`${iconBtn} xl:hidden`}>
                 <SearchIcon />
@@ -528,7 +417,7 @@ export default function Navbar() {
               <div data-menu className="relative hidden sm:block">
                 <button type="button" onClick={() => toggle("bell")} aria-label="Notifications" aria-expanded={menu === "bell"} className={iconBtn}>
                   <BellIcon />
-                  <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-blue-500 ring-2 ring-[#070d1f]" />
+                  <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-blue-500 ring-2 ring-black" />
                 </button>
                 {menu === "bell" && (
                   <div className={`${dropdown} right-0 w-80 p-2`}>
@@ -542,7 +431,7 @@ export default function Navbar() {
               </div>
 
               <div data-menu className="relative hidden sm:block">
-                <button type="button" onClick={() => toggle("account")} aria-label="Account" aria-expanded={menu === "account"} className={`flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white transition hover:border-blue-500/50 hover:bg-white/10 ${focusRing}`}>
+                <button type="button" onClick={() => toggle("account")} aria-label="Account" aria-expanded={menu === "account"} className={`flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white transition hover:border-white/30 hover:bg-white/10 ${focusRing}`}>
                   <UserIcon />
                 </button>
                 {menu === "account" && (
@@ -564,13 +453,13 @@ export default function Navbar() {
           {open && (
             <div className="lh-pop relative z-10 max-h-[70vh] overflow-y-auto border-t border-white/10 px-4 py-4 xl:hidden">
               <div className="space-y-1">
-                {mainLinks.map((link) => (
+                {mobileLinks.map((link) => (
                   <NavLink
                     key={link.path}
                     to={link.path}
                     end={link.path === "/"}
                     className={({ isActive }) =>
-                      `block rounded-xl px-4 py-3 text-sm font-semibold ${isActive ? "bg-blue-500/15 text-white" : "text-white/70 hover:bg-white/5"}`
+                      `block rounded-xl px-4 py-3 text-sm font-semibold ${isActive ? "bg-white/10 text-white" : "text-white/70 hover:bg-white/5"}`
                     }
                   >
                     {link.name}
@@ -631,12 +520,12 @@ export default function Navbar() {
       {/* SEARCH MODAL (command palette) */}
       {searchOpen && (
         <div
-          className="fixed inset-0 z-[500] flex items-start justify-center bg-black/70 px-4 pt-[10vh] backdrop-blur-sm"
+          className="fixed inset-0 z-[500] flex items-start justify-center bg-black/80 px-4 pt-[10vh] backdrop-blur-sm"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) closeSearch();
           }}
         >
-          <div role="dialog" aria-modal="true" aria-label="Search" className="lh-pop w-full max-w-2xl overflow-hidden rounded-3xl border border-white/10 bg-[#0a1226] shadow-2xl shadow-black">
+          <div role="dialog" aria-modal="true" aria-label="Search" className="lh-pop w-full max-w-2xl overflow-hidden rounded-3xl border border-white/10 bg-[#0a0a0a] shadow-2xl shadow-black">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -693,7 +582,7 @@ export default function Navbar() {
                         data-idx={index}
                         onMouseMove={() => setSearchIndex(index)}
                         onClick={() => goTo(item.path)}
-                        className={`flex w-full items-center justify-between rounded-xl px-4 py-2.5 text-left transition ${active ? "bg-blue-500/15" : "hover:bg-white/5"}`}
+                        className={`flex w-full items-center justify-between rounded-xl px-4 py-2.5 text-left transition ${active ? "bg-white/10" : "hover:bg-white/5"}`}
                       >
                         <span>
                           <span className="block text-sm font-medium text-white"><Highlight text={item.name} query={search} /></span>
