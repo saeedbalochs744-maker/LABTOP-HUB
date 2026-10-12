@@ -1,609 +1,770 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import React, { useEffect, useRef, useState } from 'react'
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 
-/* ============================================================
-   LAPTOPHUB NAVBAR - PRO
-   - Pure black, no animated lines, no glow
-   - Compacts on scroll
-   - Mega menu with featured card
-   - Command-palette search (Ctrl/Cmd + K), grouped + highlighted
-   - Keyboard + screen reader friendly, reduced-motion safe
-   Pure React + Tailwind. No extra packages.
-   ============================================================ */
+/*
+  LAPTOPHUB VIP PRO MAX navbar  ("The Blue Coin")
+   1. A blue ticker runs across the very top of the page.
+   2. A full-width navy bar with a blue edge that lights up under the cursor.
+   3. The logo is a real coin hanging off the bar. Hover it and it flips.
+   4. The Service menu opens as a wide panel with a mini VIP member card.
+   5. On phones and tablets the menu opens as a full-screen "lounge" with huge links.
+  All motion switches off for visitors who prefer reduced motion.
+  Palette: navy #050a1c, blue #2f7bff, ice #cfe0ff, deep blue #1e3a8a
+  Type: Barlow Condensed (falls back to Arial Narrow / system condensed)
+*/
 
-const BRAND = { support: "support@laptophub.com", phone: "+92 300 1234567" };
+/* ============ SETTINGS ============ */
+const BRAND = {
+  name: 'LAPTOPHUB',
+  nameA: 'LAPTOP', // first part of the logo text (silver shine)
+  nameB: 'HUB', // second part of the logo text (blue glow)
+  cta: 'Join VIP',
+  badge: 'VIP MEMBER',
+  ticker: [
+    'Genuine laptops with warranty',
+    'Free shipping on selected models',
+    'Expert support, any time',
+    'Join VIP today',
+  ],
+}
+/* ================================== */
 
-const categories = [
-  { name: "All Laptops", icon: "💻", desc: "Browse the full collection", path: "/service" },
-  { name: "Gaming", icon: "🎮", desc: "High-performance gaming", path: "/service#gaming" },
-  { name: "Business", icon: "💼", desc: "Reliable for work", path: "/service#business" },
-  { name: "Student", icon: "🎓", desc: "Affordable and portable", path: "/service#student" },
-  { name: "Creator", icon: "🎨", desc: "Design and editing", path: "/service#creator" },
-  { name: "Ultrabook", icon: "⚡", desc: "Thin and lightweight", path: "/service#ultrabook" },
-  { name: "Workstation", icon: "🖥️", desc: "Maximum power", path: "/service#workstation" },
-  { name: "Premium", icon: "✦", desc: "Flagship experience", path: "/service#premium" },
-];
+const leftLinks = [
+  { to: '/', label: 'Home' },
+  { to: '/about', label: 'About' },
+  { to: '/contact', label: 'Contact' },
+]
+const rightLinks = [
+  { to: '/service', label: 'Service', menu: true },
+  { to: '/signin', label: 'Sign In' },
+]
+const allLinks = [...leftLinks, ...rightLinks]
 
 const services = [
-  { title: "Laptop Consultation", desc: "Find the right laptop for you", path: "/service#consultation" },
-  { title: "Performance Guide", desc: "Understand CPU, GPU, RAM, SSD", path: "/service#performance" },
-  { title: "Technical Support", desc: "Professional assistance", path: "/service#support" },
-  { title: "Delivery Support", desc: "Track orders and delivery", path: "/service#delivery" },
-  { title: "Warranty", desc: "Warranty coverage", path: "/service#warranty" },
-  { title: "After Sales", desc: "Support after purchase", path: "/service#after-sales" },
-];
+  { to: '/service#consultation', title: 'Laptop consultation', desc: 'We help you pick the right laptop.', d: 'M3 5h18v12H3zM8 21h8M12 17v4' },
+  { to: '/service#warranty', title: 'Warranty', desc: 'Clear coverage on every laptop.', d: 'M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.2 6.4 20.2l1.1-6.2L3 9.6l6.2-.9z' },
+  { to: '/service#support', title: 'Priority support', desc: 'Direct line to our team, any time.', d: 'M4 13v-1a8 8 0 0116 0v1M4 13h3v5H4zM17 13h3v5h-3zM17 18c0 2-2 3-5 3' },
+]
 
-const mobileLinks = [
-  { name: "Home", path: "/" },
-  { name: "About", path: "/about" },
-  { name: "Contact", path: "/contact" },
-];
+const notifications = [
+  { id: 1, text: 'Welcome to LaptopHub. Finish setting up your profile.' },
+  { id: 2, text: 'New gaming laptops just arrived.' },
+]
 
 const searchItems = [
-  { name: "Home", description: "LaptopHub homepage", category: "Page", path: "/", keywords: "home" },
-  { name: "About LaptopHub", description: "Learn about our company", category: "Page", path: "/about", keywords: "about company" },
-  { name: "Laptop Services", description: "Explore our services", category: "Page", path: "/service", keywords: "service support" },
-  { name: "Contact", description: "Contact our support team", category: "Page", path: "/contact", keywords: "contact email phone" },
-  { name: "Gaming Laptops", description: "High-performance gaming laptops", category: "Category", path: "/service#gaming", keywords: "gaming gpu games" },
-  { name: "Business Laptops", description: "Professional laptops for work", category: "Category", path: "/service#business", keywords: "business office work" },
-  { name: "Student Laptops", description: "Affordable laptops for students", category: "Category", path: "/service#student", keywords: "student school university" },
-  { name: "Creator Laptops", description: "Laptops for creators", category: "Category", path: "/service#creator", keywords: "creator editing design video" },
-  { name: "Ultrabooks", description: "Thin and lightweight laptops", category: "Category", path: "/service#ultrabook", keywords: "thin light portable" },
-  { name: "Workstations", description: "Professional workstations", category: "Category", path: "/service#workstation", keywords: "workstation engineering" },
-  { name: "Technical Support", description: "Get technical help", category: "Service", path: "/service#support", keywords: "technical support help" },
-  { name: "Warranty", description: "Warranty coverage details", category: "Service", path: "/service#warranty", keywords: "warranty guarantee" },
-  { name: "Sign In", description: "Access your account", category: "Account", path: "/signin", keywords: "login signin account" },
-  { name: "Sign Up", description: "Create an account", category: "Account", path: "/signup", keywords: "register signup" },
-];
+  ...allLinks.map(({ to, label }) => ({ to, label })),
+  ...services.map(({ to, title }) => ({ to, label: title })),
+  { to: '/service#gaming', label: 'Gaming laptops' },
+  { to: '/service#business', label: 'Business laptops' },
+  { to: '/service#student', label: 'Student laptops' },
+  { to: '/signup', label: BRAND.cta },
+]
 
-const CAT_ORDER = ["Page", "Category", "Service", "Account"];
-const CAT_LABEL = { Page: "Pages", Category: "Laptop categories", Service: "Services", Account: "Account" };
-const QUICK = ["Gaming", "Student", "Business", "Warranty", "Support"];
+const ICONS = {
+  search: 'M21 21l-4.3-4.3M11 18a7 7 0 100-14 7 7 0 000 14z',
+  bell: 'M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0',
+  arrow: 'M5 12h14M13 6l6 6-6 6',
+  chevron: 'M6 9l6 6 6-6',
+  crown: 'M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5z',
+  menu: 'M4 7h16M4 12h10M4 17h16',
+  close: 'M6 6l12 12M18 6L6 18',
+}
 
-/* ============================================================
-   ICONS
-   ============================================================ */
-
-const Svg = ({ size = "h-5 w-5", children }) => (
-  <svg className={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    {children}
+const Icon = ({ d, className = 'h-4 w-4', fill = 'none' }) => (
+  <svg viewBox="0 0 24 24" className={className} fill={fill} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d={d} />
   </svg>
-);
-const SearchIcon = () => (<Svg><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></Svg>);
-const HeartIcon = () => (<Svg><path d="M20.8 8.7c0 5.5-8.8 10.3-8.8 10.3S3.2 14.2 3.2 8.7A4.7 4.7 0 0 1 12 6.2a4.7 4.7 0 0 1 8.8 2.5Z" /></Svg>);
-const BellIcon = () => (<Svg><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15L6 16Z" /><path d="M10 21h4" /></Svg>);
-const UserIcon = () => (<Svg><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></Svg>);
-const MenuIcon = () => (<Svg><path d="M4 7h16" /><path d="M4 12h16" /><path d="M4 17h16" /></Svg>);
-const CloseIcon = () => (<Svg><path d="M6 6l12 12" /><path d="M18 6 6 18" /></Svg>);
-const Chevron = ({ open }) => (
-  <span className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`}>
-    <Svg size="h-4 w-4"><path d="m6 9 6 6 6-6" /></Svg>
+)
+
+const cut = (n) =>
+  `polygon(${n}px 0,calc(100% - ${n}px) 0,100% ${n}px,100% calc(100% - ${n}px),calc(100% - ${n}px) 100%,${n}px 100%,0 calc(100% - ${n}px),0 ${n}px)`
+const BLUE_BTN = 'linear-gradient(180deg,#6fa0ff,#2f7bff 55%,#1d4ed8)'
+const BLUE_FOIL = 'linear-gradient(115deg,#1e3a8a,#6fa0ff 35%,#2f7bff 55%,#1e3a8a)'
+const SLANT = 'polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%)'
+
+const BAR_BIG = 80
+const BAR_SMALL = 60
+
+const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+const css = `
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&display=swap');
+.vip { font-family: 'Barlow Condensed', 'Arial Narrow', 'Roboto Condensed', system-ui, sans-serif; }
+.vip-grad-text { background-image: linear-gradient(180deg,#e6efff,#2f7bff 55%,#1d4ed8); }
+.vip-link::after { content:''; position:absolute; left:1.1rem; right:1.1rem; bottom:1.15rem; height:2px; background:#2f7bff; box-shadow:0 0 12px 1px rgba(47,123,255,.85); transform:scaleX(0); transform-origin:left; transition:transform .35s cubic-bezier(.22,1,.36,1) }
+.vip-link:hover::after, .vip-link[aria-current='page']::after { transform:scaleX(1) }
+.vip-marquee { animation: vip-marquee 38s linear infinite }
+.vip-rim { animation: vip-spin 9s linear infinite }
+.vip-pop { animation: vip-pop .22s ease-out }
+.vip-cta:hover .vip-sheen { animation: vip-shine .8s ease }
+.vip-word { transition: letter-spacing .5s cubic-bezier(.22,1,.36,1) }
+.vip-word:hover { letter-spacing: .24em }
+.vip-word-a, .vip-word-b { background-size: 250% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: vip-wordshine 4.5s ease-in-out infinite }
+.vip-word-a { background-image: linear-gradient(110deg,#aebfe0 0%,#dbe7ff 38%,#ffffff 50%,#dbe7ff 62%,#aebfe0 100%) }
+.vip-word-b { background-image: linear-gradient(110deg,#1d4ed8 0%,#2f7bff 38%,#d6e4ff 50%,#2f7bff 62%,#1d4ed8 100%); filter: drop-shadow(0 0 9px rgba(47,123,255,.65)); animation-delay: .25s }
+.vip-word-line { position:absolute; left:0; right:0; bottom:-7px; height:2px; background: linear-gradient(90deg, transparent, #2f7bff 30%, #9fc0ff 50%, #2f7bff 70%, transparent); opacity:.85; transform-origin:left; animation: vip-wordline 4.5s ease-in-out infinite }
+@keyframes vip-wordshine { 0%, 15% { background-position: 100% 0 } 55%, 100% { background-position: 0 0 } }
+@keyframes vip-wordline { 0%, 15% { transform: scaleX(.25); opacity:.4 } 55%, 100% { transform: scaleX(1); opacity:.9 } }
+.vip-shimmer { animation: vip-shimmer 5.5s ease-in-out infinite }
+.vip-halo { animation: vip-halo 3s ease-out infinite }
+@keyframes vip-shimmer { 0% { transform: translateX(-120%) } 100% { transform: translateX(420%) } }
+@keyframes vip-halo { 0% { transform: scale(.95); opacity: .7 } 100% { transform: scale(1.5); opacity: 0 } }
+@keyframes vip-marquee { to { transform: translateX(-25%) } }
+@keyframes vip-spin { to { transform: rotate(360deg) } }
+@keyframes vip-pop { from { opacity:0; transform: translateY(6px) } to { opacity:1; transform:none } }
+@keyframes vip-shine { from { transform: translateX(-130%) skewX(-22deg) } to { transform: translateX(380%) skewX(-22deg) } }
+@media (prefers-reduced-motion: reduce) { .vip-marquee, .vip-rim, .vip-pop, .vip-shimmer, .vip-halo, .vip-word-a, .vip-word-b, .vip-word-line, .vip-cta:hover .vip-sheen { animation: none } .vip-link::after { transition: none } }
+`
+
+/* Crest on the coin: an "L" for LaptopHub */
+const Crest = ({ className = 'h-8 w-7' }) => (
+  <svg viewBox="0 0 40 44" className={className} aria-hidden="true">
+    <defs>
+      <linearGradient id="vipg" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stopColor="#e6efff" />
+        <stop offset=".55" stopColor="#2f7bff" />
+        <stop offset="1" stopColor="#1e3a8a" />
+      </linearGradient>
+    </defs>
+    <path d="M20 1l17 6v17c0 9-7 16-17 19C10 40 3 33 3 24V7z" fill="#050a1c" stroke="url(#vipg)" strokeWidth="2" />
+    <path d="M14 12v19h13" fill="none" stroke="url(#vipg)" strokeWidth="3.4" strokeLinecap="square" />
+  </svg>
+)
+
+/* The coin logo: milled edge, shimmering rim, flips on hover */
+const Coin = ({ scrolled, top }) => (
+  <div className="pointer-events-none absolute left-1/2 z-30 h-[92px] w-[92px] -translate-x-1/2 transition-[top] duration-500" style={{ top }}>
+    <Link
+      to="/"
+      aria-label="LaptopHub home"
+      className="group pointer-events-auto block h-full w-full rounded-full transition-transform duration-500 [perspective:700px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cfe0ff]"
+      style={{ transform: scrolled ? 'scale(.78)' : 'scale(1)' }}
+    >
+      <span className="vip-halo pointer-events-none absolute inset-0 rounded-full border border-[#2f7bff]/60" aria-hidden="true" />
+      <span className="relative block h-full w-full rounded-full drop-shadow-[0_10px_18px_rgba(47,123,255,0.5)] transition-transform duration-[900ms] ease-out group-hover:[transform:rotateY(360deg)]">
+        <span className="vip-rim absolute inset-0 rounded-full" style={{ backgroundImage: 'conic-gradient(#e6efff,#2f7bff,#1e3a8a,#2f7bff,#e6efff,#2f7bff,#1e3a8a,#2f7bff,#e6efff)' }} />
+        <span className="absolute inset-0 rounded-full" style={{ backgroundImage: 'repeating-conic-gradient(rgba(0,0,0,0.5) 0 1.6deg, transparent 1.6deg 6deg)' }} />
+        <span className="absolute inset-[7px] rounded-full" style={{ backgroundImage: 'linear-gradient(145deg,#e6efff,#2f7bff 45%,#1e3a8a)' }} />
+        <span className="absolute inset-[11px] rounded-full bg-[#050a1c]" />
+        <span className="absolute inset-[15px] rounded-full border border-[#2f7bff]/60" />
+        <span className="absolute inset-0 flex items-center justify-center"><Crest /></span>
+      </span>
+    </Link>
+  </div>
+)
+
+/* Blue ticker strip */
+const Ticker = () => (
+  <div className="group overflow-hidden text-white" style={{ backgroundImage: 'linear-gradient(90deg,#1e3a8a,#2563eb 25%,#2f7bff 50%,#2563eb 75%,#1e3a8a)' }}>
+    <div className="vip-marquee flex w-max group-hover:[animation-play-state:paused]">
+      {[0, 1, 2, 3].map((copy) => (
+        <div key={copy} className="flex shrink-0 items-center" aria-hidden={copy > 0}>
+          {BRAND.ticker.map((text) => (
+            <span key={text} className="flex items-center whitespace-nowrap py-1.5 pl-6 text-[14px] font-bold tracking-wide">
+              {text}
+              <span className="ml-6 h-1.5 w-1.5 rotate-45 bg-white/70" />
+            </span>
+          ))}
+        </div>
+      ))}
+    </div>
+  </div>
+)
+
+/* Stylish logo text: silver part + glowing blue part, a light sweep, a growing underline.
+   Change the words in BRAND.nameA and BRAND.nameB at the top of the file. */
+const Wordmark = ({ className = 'text-[26px]' }) => (
+  <span className={`vip-word relative inline-flex items-baseline font-extrabold uppercase leading-none tracking-[0.16em] ${className}`}>
+    <span className="vip-word-a">{BRAND.nameA}</span>
+    <span className="vip-word-b">{BRAND.nameB}</span>
+    <span className="vip-word-line" aria-hidden="true" />
   </span>
-);
+)
 
-/* ============================================================
-   HELPERS
-   ============================================================ */
+/* Network lines: a faint dark-blue mesh. Glowing streaks travel along its lines at a
+   calm speed, entering from the left, right, top and bottom. */
+const STREAK_COLORS = [[37, 99, 235], [67, 56, 202], [109, 40, 217], [3, 105, 161], [30, 64, 175]]
+const CELL = 30 // mesh size in px (smaller = more triangles)
+const BASE_ALPHA = 0.09 // faint mesh always visible, set 0 to hide it
+const SPEED = [150, 260] // streak speed in px per second
+const GAP = [0.8, 1.7] // seconds between new streaks
+const MAX_STREAKS = 8
+const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]]
 
-const Highlight = ({ text, query }) => {
-  const q = query.trim();
-  if (!q) return text;
-  const i = text.toLowerCase().indexOf(q.toLowerCase());
-  if (i === -1) return text;
-  return (
-    <>
-      {text.slice(0, i)}
-      <mark className="bg-transparent text-blue-400">{text.slice(i, i + q.length)}</mark>
-      {text.slice(i + q.length)}
-    </>
-  );
-};
+function StreakBackground() {
+  const ref = useRef(null)
 
-const focusRing = "outline-none focus-visible:ring-2 focus-visible:ring-blue-500/70";
-const iconBtn = `relative flex h-11 w-11 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white ${focusRing}`;
-const dropdown =
-  "lh-pop absolute top-full z-50 mt-3 rounded-2xl border border-white/10 bg-[#0a0a0a] shadow-2xl shadow-black";
-
-/* ============================================================
-   NAVBAR
-   ============================================================ */
-
-export default function Navbar() {
-  const location = useLocation();
-  const navigate = useNavigate();
-
-  const [menu, setMenu] = useState(null);
-  const [open, setOpen] = useState(false);
-  const [mobileSec, setMobileSec] = useState(null);
-  const [scrolled, setScrolled] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const [searchIndex, setSearchIndex] = useState(0);
-  const [wishlistCount, setWishlistCount] = useState(0);
-  const [isMac] = useState(() => typeof navigator !== "undefined" && /mac/i.test(navigator.platform || ""));
-
-  const searchRef = useRef(null);
-  const listRef = useRef(null);
-
-  const toggle = (name) => setMenu((c) => (c === name ? null : name));
-  const servicesActive = location.pathname.startsWith("/service");
-
-  /* search results: filtered, then grouped by category */
-  const results = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    const list = q
-      ? searchItems.filter((item) =>
-          `${item.name} ${item.description} ${item.category} ${item.keywords}`.toLowerCase().includes(q)
-        )
-      : searchItems;
-    return [...list].sort((a, b) => CAT_ORDER.indexOf(a.category) - CAT_ORDER.indexOf(b.category));
-  }, [search]);
-
-  /* close panels on route change */
   useEffect(() => {
-    setMenu(null);
-    setOpen(false);
-  }, [location.pathname, location.hash]);
+    const canvas = ref.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    const still = reduceMotion()
+    let w = 0, h = 0, raf = 0, prevTs = 0, nextSpawn = 0, visible = true
+    let cols = 0, rows = 0
+    let nodes = [], adj = [], edges = [], streaks = []
+    const rand = (a, b) => a + Math.random() * (b - a)
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
 
-  /* lock page scroll while search or mobile menu is open */
-  useEffect(() => {
-    document.body.style.overflow = searchOpen ? "hidden" : "";
+    const build = () => {
+      cols = Math.max(3, Math.round(w / CELL))
+      rows = Math.max(2, Math.round(h / CELL))
+      const cw = w / cols
+      const rh = h / rows
+      nodes = []
+      for (let r = 0; r <= rows; r++) {
+        for (let c = 0; c <= cols; c++) {
+          const edgeX = c === 0 || c === cols
+          const edgeY = r === 0 || r === rows
+          nodes.push([c * cw + (edgeX ? 0 : rand(-0.4, 0.4) * cw), r * rh + (edgeY ? 0 : rand(-0.4, 0.4) * rh)])
+        }
+      }
+      const id = (r, c) => r * (cols + 1) + c
+      adj = nodes.map(() => [])
+      edges = []
+      const link = (a, b) => { adj[a].push(b); adj[b].push(a); edges.push([a, b]) }
+      for (let r = 0; r <= rows; r++) {
+        for (let c = 0; c <= cols; c++) {
+          if (c < cols) link(id(r, c), id(r, c + 1))
+          if (r < rows) link(id(r, c), id(r + 1, c))
+          if (r < rows && c < cols) {
+            if ((r + c) % 2 === 0) link(id(r, c), id(r + 1, c + 1))
+            else link(id(r, c + 1), id(r + 1, c))
+          }
+        }
+      }
+    }
+
+    const drawBase = () => {
+      if (BASE_ALPHA <= 0) return
+      ctx.lineWidth = 1
+      ctx.strokeStyle = `rgba(59,110,255,${BASE_ALPHA})`
+      ctx.beginPath()
+      for (const [a, b] of edges) {
+        ctx.moveTo(nodes[a][0], nodes[a][1])
+        ctx.lineTo(nodes[b][0], nodes[b][1])
+      }
+      ctx.stroke()
+      ctx.fillStyle = `rgba(120,160,255,${BASE_ALPHA * 3})`
+      ctx.beginPath()
+      for (const n of nodes) {
+        ctx.moveTo(n[0] + 1.1, n[1])
+        ctx.arc(n[0], n[1], 1.1, 0, Math.PI * 2)
+      }
+      ctx.fill()
+    }
+
+    const spawn = () => {
+      const [dx, dy] = DIRS[Math.floor(Math.random() * 4)]
+      const starts = []
+      for (let i = 0; i < nodes.length; i++) {
+        const r = Math.floor(i / (cols + 1))
+        const c = i % (cols + 1)
+        if ((dx === 1 && c === 0) || (dx === -1 && c === cols) || (dy === 1 && r === 0) || (dy === -1 && r === rows)) starts.push(i)
+      }
+      let cur = starts[Math.floor(Math.random() * starts.length)]
+      const ids = [cur]
+      let prev = -1
+      const maxSteps = Math.round(rand(8, 22))
+      for (let s = 0; s < maxSteps; s++) {
+        const opts = []
+        const wts = []
+        for (const nb of adj[cur]) {
+          if (nb === prev) continue
+          const ex = nodes[nb][0] - nodes[cur][0]
+          const ey = nodes[nb][1] - nodes[cur][1]
+          const dot = (ex * dx + ey * dy) / (Math.hypot(ex, ey) || 1)
+          opts.push(nb)
+          wts.push(dot > 0.25 ? 4 : dot > -0.25 ? 1.2 : 0.15)
+        }
+        if (!opts.length) break
+        let t = Math.random() * wts.reduce((a, b) => a + b, 0)
+        let pick = opts[opts.length - 1]
+        for (let k = 0; k < opts.length; k++) { t -= wts[k]; if (t <= 0) { pick = opts[k]; break } }
+        prev = cur
+        cur = pick
+        ids.push(cur)
+        const r = Math.floor(cur / (cols + 1))
+        const c = cur % (cols + 1)
+        const farSide = (dx === 1 && c === cols) || (dx === -1 && c === 0) || (dy === 1 && r === rows) || (dy === -1 && r === 0)
+        if (farSide && ids.length >= 7) break
+      }
+      if (ids.length < 3) return
+      const pts = ids.map((i) => nodes[i])
+      const cum = [0]
+      let total = 0
+      for (let i = 1; i < pts.length; i++) {
+        total += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1])
+        cum.push(total)
+      }
+      streaks.push({ pts, cum, total, s: 0, v: rand(SPEED[0], SPEED[1]), tail: rand(70, 160), c: STREAK_COLORS[Math.floor(Math.random() * STREAK_COLORS.length)], lw: rand(1.1, 1.8) })
+    }
+
+    const pointAt = (st, d) => {
+      const dd = clamp(d, 0, st.total)
+      let i = 1
+      while (i < st.cum.length - 1 && st.cum[i] < dd) i++
+      const seg = st.cum[i] - st.cum[i - 1] || 1
+      const t = (dd - st.cum[i - 1]) / seg
+      return [st.pts[i - 1][0] + (st.pts[i][0] - st.pts[i - 1][0]) * t, st.pts[i - 1][1] + (st.pts[i][1] - st.pts[i - 1][1]) * t]
+    }
+
+    const resize = () => {
+      const r = canvas.getBoundingClientRect()
+      w = r.width; h = r.height
+      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      canvas.width = Math.max(1, Math.round(w * dpr))
+      canvas.height = Math.max(1, Math.round(h * dpr))
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      streaks = []
+      build()
+      ctx.clearRect(0, 0, w, h)
+      drawBase()
+    }
+
+    const loop = (ts) => {
+      raf = requestAnimationFrame(loop)
+      if (!visible || document.hidden) { prevTs = ts; return }
+      const dt = Math.min(0.05, (ts - (prevTs || ts)) / 1000)
+      prevTs = ts
+      const t = ts / 1000
+
+      if (t > nextSpawn && streaks.length < MAX_STREAKS && w > 0) {
+        spawn()
+        nextSpawn = t + rand(GAP[0], GAP[1])
+      }
+
+      ctx.clearRect(0, 0, w, h)
+      drawBase()
+      ctx.lineCap = 'round'
+      ctx.lineJoin = 'round'
+
+      streaks = streaks.filter((st) => {
+        st.s += st.v * dt
+        const head = Math.min(st.s, st.total)
+        const tail = Math.max(0, st.s - st.tail)
+        if (tail >= st.total) return false
+        if (head <= tail) return true
+
+        const [r, g, b] = st.c
+        const N = 18
+        ctx.lineWidth = st.lw
+        let prev = pointAt(st, tail)
+        for (let k = 1; k <= N; k++) {
+          const p = pointAt(st, tail + ((head - tail) * k) / N)
+          ctx.strokeStyle = `rgba(${r},${g},${b},${(Math.pow(k / N, 2) * 0.95).toFixed(3)})`
+          ctx.beginPath()
+          ctx.moveTo(prev[0], prev[1])
+          ctx.lineTo(p[0], p[1])
+          ctx.stroke()
+          prev = p
+        }
+
+        if (st.s < st.total) {
+          ctx.shadowBlur = 12
+          ctx.shadowColor = `rgba(${r},${g},${b},1)`
+          ctx.fillStyle = `rgb(${Math.min(255, r + 90)},${Math.min(255, g + 90)},${Math.min(255, b + 60)})`
+          ctx.beginPath()
+          ctx.arc(prev[0], prev[1], st.lw + 0.9, 0, Math.PI * 2)
+          ctx.fill()
+          ctx.shadowBlur = 0
+        }
+        return true
+      })
+    }
+
+    const ro = new ResizeObserver(resize)
+    ro.observe(canvas)
+    const io = new IntersectionObserver(([en]) => { visible = en.isIntersecting })
+    io.observe(canvas)
+    resize()
+    if (!still) raf = requestAnimationFrame(loop)
+
     return () => {
-      document.body.style.overflow = "";
-    };
-  }, [searchOpen]);
+      cancelAnimationFrame(raf)
+      ro.disconnect()
+      io.disconnect()
+    }
+  }, [])
 
-  /* compact mode on scroll (rAF throttled) */
+  return <canvas ref={ref} className="absolute inset-0 h-full w-full" aria-hidden="true" />
+}
+
+const Navbar = () => {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const [scrolled, setScrolled] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [lounge, setLounge] = useState(false)
+  const [menu, setMenu] = useState(false)
+  const [bell, setBell] = useState(false)
+  const [unread, setUnread] = useState(notifications.length)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const [active, setActive] = useState(0)
+  const barRef = useRef(null)
+  const bellRef = useRef(null)
+  const closeTimer = useRef(null)
+  const ctaBox = useRef(null)
+
+  const barH = scrolled ? BAR_SMALL : BAR_BIG
+
+  const showMenu = () => { clearTimeout(closeTimer.current); setMenu(true) }
+  const hideMenu = () => { clearTimeout(closeTimer.current); closeTimer.current = setTimeout(() => setMenu(false), 180) }
+
+  // cursor spotlight on the bar: writes CSS variables, no React re-render
+  const onBarMove = (e) => {
+    const el = barRef.current
+    if (!el) return
+    const r = el.getBoundingClientRect()
+    el.style.setProperty('--mx', `${e.clientX - r.left}px`)
+    el.style.setProperty('--my', `${e.clientY - r.top}px`)
+    el.style.setProperty('--so', '1')
+  }
+  const onBarLeave = () => barRef.current?.style.setProperty('--so', '0')
+
+  // magnetic Join VIP button
+  const ctaEnter = (e) => { ctaBox.current = e.currentTarget.getBoundingClientRect() }
+  const ctaMove = (e) => {
+    if (reduceMotion() || !ctaBox.current) return
+    const b = ctaBox.current
+    e.currentTarget.style.transform = `translate(${(e.clientX - (b.left + b.width / 2)) * 0.22}px, ${(e.clientY - (b.top + b.height / 2)) * 0.32}px)`
+  }
+  const ctaLeave = (e) => { e.currentTarget.style.transform = '' }
+
   useEffect(() => {
-    let raf = 0;
-    const update = () => {
-      raf = 0;
-      setScrolled(window.scrollY > 24);
-    };
     const onScroll = () => {
-      if (!raf) raf = requestAnimationFrame(update);
-    };
-    update();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      if (raf) cancelAnimationFrame(raf);
-    };
-  }, []);
-
-  /* wishlist count: persisted. Other pages can update it with
-     window.dispatchEvent(new CustomEvent("laptophub:wishlist", { detail: 3 })) */
-  useEffect(() => {
-    try {
-      const saved = Number(localStorage.getItem("laptophub_wishlist_count") || 0);
-      if (Number.isFinite(saved) && saved >= 0) setWishlistCount(saved);
-    } catch {}
-    const onWish = (e) => {
-      const n = Number(e.detail);
-      if (Number.isFinite(n) && n >= 0) setWishlistCount(n);
-    };
-    window.addEventListener("laptophub:wishlist", onWish);
-    return () => window.removeEventListener("laptophub:wishlist", onWish);
-  }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem("laptophub_wishlist_count", String(wishlistCount));
-    } catch {}
-  }, [wishlistCount]);
-
-  const openSearch = () => {
-    setSearchOpen(true);
-    setSearch("");
-    setSearchIndex(0);
-    setOpen(false);
-    setMenu(null);
-    setTimeout(() => searchRef.current?.focus(), 80);
-  };
-
-  const closeSearch = () => {
-    setSearchOpen(false);
-    setSearch("");
-    setSearchIndex(0);
-  };
-
-  const goTo = (path) => {
-    navigate(path);
-    closeSearch();
-  };
-
-  /* keyboard: Ctrl/Cmd+K, Esc, arrows, enter */
-  useEffect(() => {
+      const max = document.documentElement.scrollHeight - window.innerHeight
+      setScrolled(window.scrollY > 16)
+      setProgress(max > 0 ? Math.min(100, (window.scrollY / max) * 100) : 0)
+    }
     const onKey = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        openSearch();
-        return;
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setSearchOpen((v) => !v)
       }
-      if (e.key === "Escape") {
-        setSearchOpen(false);
-        setMenu(null);
-        setOpen(false);
+      if (e.key === 'Escape') {
+        setSearchOpen(false)
+        setBell(false)
+        setMenu(false)
+        setLounge(false)
       }
-      if (searchOpen) {
-        if (e.key === "ArrowDown") {
-          e.preventDefault();
-          setSearchIndex((i) => Math.min(i + 1, Math.max(results.length - 1, 0)));
-        }
-        if (e.key === "ArrowUp") {
-          e.preventDefault();
-          setSearchIndex((i) => Math.max(i - 1, 0));
-        }
-        if (e.key === "Enter" && results[searchIndex]) {
-          e.preventDefault();
-          goTo(results[searchIndex].path);
-        }
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchOpen, results, searchIndex]);
-
-  /* keep the highlighted result visible */
-  useEffect(() => {
-    if (!searchOpen) return;
-    listRef.current?.querySelector(`[data-idx="${searchIndex}"]`)?.scrollIntoView({ block: "nearest" });
-  }, [searchIndex, searchOpen]);
-
-  /* close dropdowns on outside click */
-  useEffect(() => {
+    }
     const onDown = (e) => {
-      if (!e.target.closest("[data-menu]")) setMenu(null);
-    };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, []);
+      if (bellRef.current && !bellRef.current.contains(e.target)) setBell(false)
+    }
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('keydown', onKey)
+    document.addEventListener('mousedown', onDown)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('keydown', onKey)
+      document.removeEventListener('mousedown', onDown)
+      clearTimeout(closeTimer.current)
+    }
+  }, [])
 
-  const linkBase = `relative rounded-full px-4 py-2 text-sm font-semibold transition ${focusRing}`;
-  const navLink = ({ isActive }) =>
-    `${linkBase} ${isActive ? "bg-white/10 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"}`;
-  const dropBtn = (active) =>
-    `flex items-center gap-1 ${linkBase} ${active ? "bg-white/10 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"}`;
+  useEffect(() => {
+    setLounge(false)
+    setMenu(false)
+    setBell(false)
+    setSearchOpen(false)
+  }, [location.pathname, location.hash])
 
-  const badge =
-    "absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-black bg-blue-500 px-1 text-[10px] font-bold text-white";
+  useEffect(() => {
+    document.body.style.overflow = lounge ? 'hidden' : ''
+    return () => { document.body.style.overflow = '' }
+  }, [lounge])
+
+  useEffect(() => setActive(0), [query, searchOpen])
+
+  const results = searchItems.filter((i) => i.label.toLowerCase().includes(query.toLowerCase()))
+  const go = (to) => {
+    setSearchOpen(false)
+    setQuery('')
+    navigate(to)
+  }
+  const onSearchKey = (e) => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); setActive((i) => Math.min(i + 1, results.length - 1)) }
+    if (e.key === 'ArrowUp') { e.preventDefault(); setActive((i) => Math.max(i - 1, 0)) }
+    if (e.key === 'Enter' && results[active]) go(results[active].to)
+  }
+
+  const focusRing = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f7bff]'
+  const linkClass = ({ isActive }) =>
+    `vip-link relative flex items-center gap-1.5 px-[1.1rem] text-[17px] font-semibold tracking-wide transition-colors duration-300 ${focusRing} ${
+      isActive ? 'text-[#cfe0ff]' : 'text-zinc-400 hover:text-white'
+    }`
+  const iconBtn = `relative flex h-10 w-10 items-center justify-center border border-white/10 bg-white/[0.03] text-zinc-300 transition hover:border-[#2f7bff]/70 hover:text-[#cfe0ff] ${focusRing}`
+  const panel = 'border border-[#2f7bff]/30 bg-[#070d1f] shadow-[0_28px_60px_-10px_rgba(0,0,0,1)]'
+  const panelLine = <div className="h-[2px] bg-gradient-to-r from-transparent via-[#2f7bff] to-transparent" />
+
+  const renderLink = ({ to, label, menu: hasMenu }) => (
+    <div
+      key={to}
+      className="flex self-stretch"
+      onMouseEnter={hasMenu ? showMenu : undefined}
+      onMouseLeave={hasMenu ? hideMenu : undefined}
+      onFocus={hasMenu ? showMenu : undefined}
+      onBlur={hasMenu ? (e) => !e.currentTarget.contains(e.relatedTarget) && hideMenu() : undefined}
+    >
+      <NavLink to={to} end={to === '/'} className={linkClass}>
+        {label}
+        {hasMenu && <Icon d={ICONS.chevron} className={`h-3.5 w-3.5 transition-transform duration-300 ${menu ? 'rotate-180 text-[#2f7bff]' : ''}`} />}
+      </NavLink>
+    </div>
+  )
 
   return (
-    <>
-      <style>{`
-        @keyframes lh-pop { from { opacity: 0; transform: translateY(-6px) scale(.98); } to { opacity: 1; transform: none; } }
-        .lh-pop { animation: lh-pop .16s ease-out; transform-origin: top; }
-        @media (prefers-reduced-motion: reduce) { .lh-pop { animation: none; } }
-      `}</style>
+    <header className="vip sticky top-0 z-50">
+      <style>{css}</style>
 
-      <header className={`sticky top-0 z-[100] px-3 transition-[padding] duration-300 sm:px-5 ${scrolled ? "pt-2" : "pt-3"}`}>
-        <div
-          className={`relative mx-auto max-w-7xl rounded-3xl border bg-black transition-[box-shadow] duration-300 ${
-            scrolled ? "border-white/15 shadow-[0_20px_60px_-15px_rgba(0,0,0,1)]" : "border-white/10 shadow-2xl shadow-black"
-          }`}
-        >
-          {/* ANNOUNCEMENT STRIP (collapses on scroll) */}
-          <div className={`relative z-10 hidden grid-rows-[1fr] transition-[grid-template-rows] duration-300 md:grid ${scrolled ? "!grid-rows-[0fr]" : ""}`}>
-            <div className="overflow-hidden">
-              <div className="flex items-center justify-center gap-4 border-b border-white/10 px-6 py-2.5 text-xs font-semibold tracking-wide text-white/75">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-500 opacity-60 motion-reduce:animate-none" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-blue-500" />
-                </span>
-                <span>Genuine laptops</span>
-                <span className="text-blue-500">◆</span>
-                <span>Free shipping on selected models</span>
-                <span className="text-blue-500">◆</span>
-                <span>Expert support</span>
-              </div>
-            </div>
+      {/* TICKER: folds away on scroll */}
+      <div className={`overflow-hidden transition-all duration-500 ${scrolled ? 'max-h-0' : 'max-h-9'}`} aria-hidden={scrolled}>
+        <Ticker />
+      </div>
+
+      {/* MAIN BAR */}
+      <div ref={barRef} className="relative" onMouseMove={onBarMove} onMouseLeave={onBarLeave}>
+        <div className="pointer-events-none absolute inset-0 overflow-hidden bg-[#050a1c] shadow-[0_22px_40px_-14px_rgba(0,0,0,0.75)]" aria-hidden="true">
+          <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,rgba(255,255,255,0.022)_0_2px,transparent_2px_4px)]" />
+          <StreakBackground />
+          <div className="absolute -left-24 top-0 h-full w-80 bg-[radial-gradient(closest-side,rgba(47,123,255,0.18),transparent)]" />
+          <div className="absolute -right-24 top-0 h-full w-80 bg-[radial-gradient(closest-side,rgba(47,123,255,0.18),transparent)]" />
+          <div
+            className="absolute inset-0 transition-opacity duration-500"
+            style={{ opacity: 'var(--so, 0)', backgroundImage: 'radial-gradient(420px circle at var(--mx,50%) var(--my,50%), rgba(47,123,255,0.22), transparent 65%)' }}
+          />
+          <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[#2f7bff]/80 to-transparent" />
+          <div className="vip-shimmer absolute bottom-0 left-0 h-[2px] w-1/4 bg-gradient-to-r from-transparent via-[#9fc0ff] to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 h-[2px] overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-[#1e3a8a] via-[#2f7bff] to-[#9fc0ff] shadow-[0_0_10px_rgba(47,123,255,0.9)] transition-[width] duration-150" style={{ width: `${progress}%` }} />
+          </div>
+        </div>
+
+        <nav aria-label="Main" className="relative mx-auto grid max-w-[1400px] grid-cols-[1fr_auto_1fr] items-stretch px-3 transition-[height] duration-500 sm:px-8" style={{ height: barH }}>
+          {/* LEFT */}
+          <div className="flex items-center gap-3 xl:gap-8">
+            <button type="button" onClick={() => setLounge(true)} aria-label="Open menu" className={`${iconBtn} h-11 w-11 text-[#cfe0ff] xl:hidden`}>
+              <Icon d={ICONS.menu} className="h-5 w-5" />
+            </button>
+            <Link to="/" aria-label={`${BRAND.name} home`} className={`hidden pb-2 sm:block ${focusRing}`}>
+              <Wordmark />
+            </Link>
+            <div className="hidden self-stretch xl:flex">{leftLinks.map(renderLink)}</div>
           </div>
 
-          {/* MAIN ROW */}
-          <div className={`relative z-10 flex items-center justify-between gap-4 px-4 transition-[height] duration-300 sm:px-6 ${scrolled ? "h-16" : "h-20"}`}>
-            {/* LOGO */}
-            <Link to="/" aria-label="LaptopHub home" className={`flex shrink-0 items-center gap-3 rounded-2xl ${focusRing}`}>
-              <span
-                className={`flex items-center justify-center rounded-2xl border border-white/15 bg-black font-black text-white transition-all duration-300 ${
-                  scrolled ? "h-10 w-10 text-base" : "h-12 w-12 text-lg"
-                }`}
-              >
-                L<span className="text-blue-500">H</span>
-              </span>
-              <span className="leading-none">
-                <span className={`block font-black tracking-tight text-white transition-all duration-300 ${scrolled ? "text-xl" : "text-2xl"}`}>
-                  LAPTOP<span className="font-semibold text-blue-500">HUB</span>
-                </span>
-                {!scrolled && <span className="mt-1.5 block text-[10px] font-semibold tracking-[0.2em] text-white/40">Est. 2026</span>}
-              </span>
-            </Link>
+          {/* CENTER: space for the coin */}
+          <div className="w-24" aria-hidden="true" />
 
-            {/* DESKTOP NAV */}
-            <nav aria-label="Main" className="hidden items-center gap-1 xl:flex">
-              <NavLink to="/" end className={navLink}>Home</NavLink>
+          {/* RIGHT */}
+          <div className="flex items-center justify-end gap-2">
+            <div className="hidden self-stretch xl:flex">{rightLinks.map(renderLink)}</div>
+            <span className="mx-2 hidden h-6 w-px bg-white/15 xl:block" aria-hidden="true" />
 
-              <div data-menu className="relative">
-                <button type="button" onClick={() => toggle("laptops")} aria-expanded={menu === "laptops"} aria-haspopup="true" className={dropBtn(menu === "laptops")}>
-                  Laptops <Chevron open={menu === "laptops"} />
-                </button>
-                {menu === "laptops" && (
-                  <div className={`${dropdown} left-0 w-[720px] p-3`}>
-                    <div className="flex gap-3">
-                      <div className="grid flex-1 grid-cols-2 gap-1">
-                        {categories.map((c) => (
-                          <Link key={c.name} to={c.path} className={`flex items-center gap-3 rounded-xl p-3 transition hover:bg-white/5 ${focusRing}`}>
-                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/5 text-lg">{c.icon}</span>
-                            <span>
-                              <span className="block text-sm font-semibold text-white">{c.name}</span>
-                              <span className="block text-xs text-white/40">{c.desc}</span>
-                            </span>
-                          </Link>
-                        ))}
-                      </div>
-                      <Link
-                        to="/service#gaming"
-                        className={`flex w-52 shrink-0 flex-col justify-end rounded-xl border border-white/10 bg-white/[0.03] p-4 transition hover:bg-white/[0.06] ${focusRing}`}
-                      >
-                        <span className="text-xs font-semibold text-blue-400">Featured</span>
-                        <span className="mt-1 text-lg font-bold text-white">Gaming laptops</span>
-                        <span className="mt-1 text-xs text-white/50">Fast GPUs and high refresh rate displays.</span>
-                        <span className="mt-4 inline-flex w-fit rounded-full bg-blue-500 px-3.5 py-1.5 text-xs font-semibold text-white">Shop gaming</span>
-                      </Link>
-                    </div>
-                  </div>
-                )}
-              </div>
+            <button type="button" onClick={() => setSearchOpen(true)} title="Search (Ctrl K)" aria-label="Search" className={iconBtn}>
+              <Icon d={ICONS.search} className="h-[18px] w-[18px]" />
+            </button>
 
-              <div data-menu className="relative">
-                <button type="button" onClick={() => toggle("services")} aria-expanded={menu === "services"} aria-haspopup="true" className={dropBtn(menu === "services" || servicesActive)}>
-                  Services <Chevron open={menu === "services"} />
-                </button>
-                {menu === "services" && (
-                  <div className={`${dropdown} left-0 w-[540px] p-3`}>
-                    <div className="grid grid-cols-2 gap-1">
-                      {services.map((s) => (
-                        <Link key={s.title} to={s.path} className={`rounded-xl p-3 transition hover:bg-white/5 ${focusRing}`}>
-                          <span className="block text-sm font-semibold text-white">{s.title}</span>
-                          <span className="mt-0.5 block text-xs text-white/40">{s.desc}</span>
-                        </Link>
+            <div className="relative hidden xl:block" ref={bellRef}>
+              <button type="button" aria-label="Notifications" aria-expanded={bell} onClick={() => { setBell((v) => !v); setUnread(0) }} className={iconBtn}>
+                <Icon d={ICONS.bell} className="h-[18px] w-[18px]" />
+                {unread > 0 && <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center bg-[#2f7bff] px-1 text-[11px] font-bold text-white">{unread}</span>}
+              </button>
+              {bell && (
+                <div className="vip-pop absolute right-0 top-full z-40 w-72 pt-4">
+                  <div className={panel}>
+                    {panelLine}
+                    <div className="p-2">
+                      {notifications.map((n) => (
+                        <p key={n.id} className="p-3 text-[15px] leading-snug text-zinc-300 hover:bg-white/[0.06]">{n.text}</p>
                       ))}
                     </div>
-                    <Link to="/contact" className={`mt-2 flex items-center justify-between rounded-xl bg-white/5 px-4 py-3 text-sm font-semibold text-blue-400 transition hover:bg-white/10 ${focusRing}`}>
-                      Need help choosing a laptop? <span aria-hidden="true">→</span>
-                    </Link>
                   </div>
-                )}
-              </div>
-
-              <NavLink to="/about" className={navLink}>About</NavLink>
-              <NavLink to="/contact" className={navLink}>Contact</NavLink>
-            </nav>
-
-            {/* RIGHT SIDE */}
-            <div className="flex items-center gap-1 sm:gap-1.5">
-              <button
-                type="button"
-                onClick={openSearch}
-                aria-label="Search"
-                className={`hidden h-11 items-center gap-3 rounded-full border border-white/10 bg-white/5 pl-4 pr-2 text-sm text-white/50 transition hover:border-white/25 hover:text-white xl:flex ${focusRing}`}
-              >
-                <SearchIcon />
-                <span className="w-24 text-left">Search</span>
-                <kbd className="rounded-md border border-white/10 bg-black px-2 py-0.5 font-mono text-[11px] text-white/50">{isMac ? "⌘ K" : "Ctrl K"}</kbd>
-              </button>
-              <button type="button" onClick={openSearch} aria-label="Search" className={`${iconBtn} xl:hidden`}>
-                <SearchIcon />
-              </button>
-
-              <div data-menu className="relative hidden sm:block">
-                <button type="button" onClick={() => toggle("wishlist")} aria-label="Wishlist" aria-expanded={menu === "wishlist"} className={iconBtn}>
-                  <HeartIcon />
-                  {wishlistCount > 0 && <span className={badge}>{wishlistCount}</span>}
-                </button>
-                {menu === "wishlist" && (
-                  <div className={`${dropdown} right-0 w-72 p-5 text-center`}>
-                    <p className="text-sm font-semibold text-white">Wishlist</p>
-                    <p className="mt-1 text-xs text-white/40">
-                      {wishlistCount === 0 ? "You have no saved laptops yet." : `${wishlistCount} saved item${wishlistCount === 1 ? "" : "s"}.`}
-                    </p>
-                    <Link to="/service" className={`mt-4 inline-flex rounded-full bg-white/10 px-4 py-2 text-xs font-semibold text-white transition hover:bg-white/15 ${focusRing}`}>
-                      Browse laptops
-                    </Link>
-                  </div>
-                )}
-              </div>
-
-              <div data-menu className="relative hidden sm:block">
-                <button type="button" onClick={() => toggle("bell")} aria-label="Notifications" aria-expanded={menu === "bell"} className={iconBtn}>
-                  <BellIcon />
-                  <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-blue-500 ring-2 ring-black" />
-                </button>
-                {menu === "bell" && (
-                  <div className={`${dropdown} right-0 w-80 p-2`}>
-                    <p className="px-3 pb-1 pt-2 text-sm font-semibold text-white">Notifications</p>
-                    <Link to="/service#gaming" className={`block rounded-xl px-3 py-2.5 transition hover:bg-white/5 ${focusRing}`}>
-                      <span className="block text-sm text-white/90">New gaming laptops just arrived</span>
-                      <span className="block text-xs text-white/40">Tap to see the new models</span>
-                    </Link>
-                  </div>
-                )}
-              </div>
-
-              <div data-menu className="relative hidden sm:block">
-                <button type="button" onClick={() => toggle("account")} aria-label="Account" aria-expanded={menu === "account"} className={`flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white transition hover:border-white/30 hover:bg-white/10 ${focusRing}`}>
-                  <UserIcon />
-                </button>
-                {menu === "account" && (
-                  <div className={`${dropdown} right-0 w-60 p-2`}>
-                    <p className="px-3 pb-2 pt-2 text-xs text-white/40">Welcome to LaptopHub</p>
-                    <Link to="/signin" className={`block rounded-xl px-4 py-2.5 text-sm font-medium text-white/80 hover:bg-white/5 hover:text-white ${focusRing}`}>Sign In</Link>
-                    <Link to="/signup" className={`mt-1 block rounded-xl bg-blue-500 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-blue-400 ${focusRing}`}>Join VIP</Link>
-                  </div>
-                )}
-              </div>
-
-              <button type="button" onClick={() => setOpen((c) => !c)} aria-label="Menu" aria-expanded={open} className={`${iconBtn} xl:hidden`}>
-                {open ? <CloseIcon /> : <MenuIcon />}
-              </button>
-            </div>
-          </div>
-
-          {/* MOBILE PANEL */}
-          {open && (
-            <div className="lh-pop relative z-10 max-h-[70vh] overflow-y-auto border-t border-white/10 px-4 py-4 xl:hidden">
-              <div className="space-y-1">
-                {mobileLinks.map((link) => (
-                  <NavLink
-                    key={link.path}
-                    to={link.path}
-                    end={link.path === "/"}
-                    className={({ isActive }) =>
-                      `block rounded-xl px-4 py-3 text-sm font-semibold ${isActive ? "bg-white/10 text-white" : "text-white/70 hover:bg-white/5"}`
-                    }
-                  >
-                    {link.name}
-                  </NavLink>
-                ))}
-              </div>
-
-              {[
-                { id: "laptops", label: "Laptops" },
-                { id: "services", label: "Services" },
-              ].map((sec) => (
-                <div key={sec.id} className="mt-2 rounded-xl border border-white/10">
-                  <button
-                    type="button"
-                    onClick={() => setMobileSec((c) => (c === sec.id ? null : sec.id))}
-                    aria-expanded={mobileSec === sec.id}
-                    className="flex w-full items-center justify-between px-4 py-3 text-sm font-semibold text-white/80"
-                  >
-                    {sec.label} <Chevron open={mobileSec === sec.id} />
-                  </button>
-                  {mobileSec === sec.id && (
-                    <div className="border-t border-white/10 p-2">
-                      {sec.id === "laptops" ? (
-                        <div className="grid grid-cols-2 gap-2">
-                          {categories.map((c) => (
-                            <Link key={c.name} to={c.path} className="flex items-center gap-2 rounded-xl bg-white/5 px-3 py-2.5 text-sm text-white/80 hover:bg-white/10">
-                              <span>{c.icon}</span>
-                              {c.name}
-                            </Link>
-                          ))}
-                        </div>
-                      ) : (
-                        services.map((s) => (
-                          <Link key={s.title} to={s.path} className="block rounded-xl px-3 py-2.5 text-sm text-white/70 hover:bg-white/5 hover:text-white">
-                            {s.title}
-                          </Link>
-                        ))
-                      )}
-                    </div>
-                  )}
                 </div>
-              ))}
-
-              <div className="mt-4 grid grid-cols-2 gap-2 border-t border-white/10 pt-4">
-                <Link to="/signin" className="rounded-full border border-white/20 py-3 text-center text-sm font-semibold text-white">Sign In</Link>
-                <Link to="/signup" className="rounded-full bg-blue-500 py-3 text-center text-sm font-semibold text-white">Join VIP</Link>
-              </div>
-
-              <div className="mt-4 rounded-xl border border-white/10 p-4 text-xs text-white/50">
-                <a href={`mailto:${BRAND.support}`} className="block font-medium text-white/80">{BRAND.support}</a>
-                <a href={`tel:${BRAND.phone.replace(/\s/g, "")}`} className="mt-1 block">{BRAND.phone}</a>
-              </div>
-            </div>
-          )}
-        </div>
-      </header>
-
-      {/* SEARCH MODAL (command palette) */}
-      {searchOpen && (
-        <div
-          className="fixed inset-0 z-[500] flex items-start justify-center bg-black/80 px-4 pt-[10vh] backdrop-blur-sm"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) closeSearch();
-          }}
-        >
-          <div role="dialog" aria-modal="true" aria-label="Search" className="lh-pop w-full max-w-2xl overflow-hidden rounded-3xl border border-white/10 bg-[#0a0a0a] shadow-2xl shadow-black">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                goTo(results[searchIndex] ? results[searchIndex].path : "/service");
-              }}
-              className="flex items-center gap-3 border-b border-white/10 px-5"
-            >
-              <span className="text-white/40"><SearchIcon /></span>
-              <input
-                ref={searchRef}
-                type="text"
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setSearchIndex(0);
-                }}
-                placeholder="Search laptops, categories, services..."
-                className="h-14 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/30"
-              />
-              <kbd className="rounded-md border border-white/10 px-2 py-0.5 font-mono text-[10px] text-white/40">ESC</kbd>
-            </form>
-
-            {!search && (
-              <div className="flex flex-wrap gap-2 border-b border-white/10 px-5 py-3">
-                {QUICK.map((q) => (
-                  <button
-                    key={q}
-                    type="button"
-                    onClick={() => {
-                      setSearch(q);
-                      setSearchIndex(0);
-                      searchRef.current?.focus();
-                    }}
-                    className={`rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/70 transition hover:border-blue-500/50 hover:text-white ${focusRing}`}
-                  >
-                    {q}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            <div ref={listRef} className="max-h-[50vh] overflow-y-auto p-2">
-              {results.length === 0 ? (
-                <p className="px-4 py-10 text-center text-sm text-white/40">No results for "{search}". Try gaming, business, student or support.</p>
-              ) : (
-                results.map((item, index) => {
-                  const showHead = index === 0 || results[index - 1].category !== item.category;
-                  const active = index === searchIndex;
-                  return (
-                    <React.Fragment key={`${item.name}-${item.path}`}>
-                      {showHead && <p className="px-4 pb-1 pt-3 text-xs font-semibold text-white/35">{CAT_LABEL[item.category]}</p>}
-                      <button
-                        type="button"
-                        data-idx={index}
-                        onMouseMove={() => setSearchIndex(index)}
-                        onClick={() => goTo(item.path)}
-                        className={`flex w-full items-center justify-between rounded-xl px-4 py-2.5 text-left transition ${active ? "bg-white/10" : "hover:bg-white/5"}`}
-                      >
-                        <span>
-                          <span className="block text-sm font-medium text-white"><Highlight text={item.name} query={search} /></span>
-                          <span className="block text-xs text-white/40"><Highlight text={item.description} query={search} /></span>
-                        </span>
-                        {active && <kbd className="rounded-md border border-white/10 px-2 py-0.5 font-mono text-[10px] text-white/50">↵</kbd>}
-                      </button>
-                    </React.Fragment>
-                  );
-                })
               )}
             </div>
 
-            <div className="flex gap-4 border-t border-white/10 px-5 py-3 font-mono text-[11px] text-white/40">
-              <span>↑↓ Navigate</span>
-              <span>Enter Select</span>
-              <span>Esc Close</span>
+            <Link
+              to="/signup"
+              onMouseEnter={ctaEnter}
+              onMouseMove={ctaMove}
+              onMouseLeave={ctaLeave}
+              className={`vip-cta group relative ml-1 hidden overflow-hidden px-7 py-2.5 text-[17px] font-extrabold tracking-wide text-white transition-transform duration-200 ease-out xl:block ${focusRing}`}
+              style={{ clipPath: SLANT, backgroundImage: BLUE_BTN }}
+            >
+              <span className="vip-sheen pointer-events-none absolute inset-y-0 left-0 w-1/4 -translate-x-[130%] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
+              <span className="relative flex items-center gap-2">
+                <Icon d={ICONS.crown} fill="currentColor" className="h-4 w-4" />
+                {BRAND.cta}
+              </span>
+            </Link>
+            <Link to="/signup" aria-label={BRAND.cta} className={`flex h-11 w-11 items-center justify-center text-white xl:hidden ${focusRing}`} style={{ clipPath: 'polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%)', backgroundImage: BLUE_BTN }}>
+              <Icon d={ICONS.crown} fill="currentColor" className="h-5 w-5" />
+            </Link>
+          </div>
+        </nav>
+
+        <Coin scrolled={scrolled} top={barH - 52} />
+
+        {/* SERVICE PANEL (desktop) */}
+        {menu && (
+          <div className="pointer-events-none absolute inset-x-0 top-full z-40 hidden xl:block">
+            <div className="mx-auto flex max-w-[1400px] justify-end px-8">
+              <div className="vip-pop pointer-events-auto w-[540px] pt-3" onMouseEnter={showMenu} onMouseLeave={hideMenu}>
+                <div className={panel}>
+                  {panelLine}
+                  <div className="grid grid-cols-[1.2fr_1fr] gap-2 p-2">
+                    <div>
+                      {services.map((s) => (
+                        <Link key={s.to} to={s.to} className={`group/item flex items-start gap-3 p-3 transition hover:bg-white/[0.06] ${focusRing}`}>
+                          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center border border-[#2f7bff]/50 text-[#2f7bff] transition group-hover/item:bg-[#2f7bff] group-hover/item:text-white">
+                            <Icon d={s.d} className="h-[18px] w-[18px]" />
+                          </span>
+                          <span>
+                            <span className="block text-[17px] font-bold leading-tight text-white">{s.title}</span>
+                            <span className="mt-0.5 block text-sm leading-snug text-zinc-400">{s.desc}</span>
+                          </span>
+                        </Link>
+                      ))}
+                    </div>
+
+                    <Link to="/signup" className={`group/feat relative flex flex-col justify-end overflow-hidden border border-[#2f7bff]/40 bg-[repeating-linear-gradient(135deg,rgba(47,123,255,0.08)_0_2px,transparent_2px_9px)] p-4 ${focusRing}`}>
+                      <span className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-[#2f7bff]/25 blur-2xl transition group-hover/feat:bg-[#2f7bff]/40" />
+                      <span
+                        className="relative mb-4 flex h-[72px] w-32 -rotate-3 flex-col justify-between p-2.5 text-white shadow-[0_10px_24px_-6px_rgba(47,123,255,0.55)] transition-transform duration-500 group-hover/feat:rotate-0 group-hover/feat:scale-105"
+                        style={{ clipPath: cut(9), backgroundImage: BLUE_FOIL }}
+                        aria-hidden="true"
+                      >
+                        <span className="flex items-center justify-between">
+                          <span className="text-[13px] font-extrabold leading-none tracking-[0.2em]">{BRAND.name}</span>
+                          <Icon d={ICONS.crown} fill="currentColor" className="h-4 w-4" />
+                        </span>
+                        <span className="text-[12px] font-bold leading-none tracking-[0.18em]">{BRAND.badge}</span>
+                      </span>
+                      <span className="relative text-xl font-extrabold leading-tight text-[#cfe0ff]">Skip the queue</span>
+                      <span className="relative mt-1 text-sm leading-snug text-zinc-400">Priority support and early access to new laptop drops.</span>
+                      <span className="relative mt-3 flex items-center gap-1.5 text-[15px] font-bold text-white">
+                        {BRAND.cta} <Icon d={ICONS.arrow} className="h-4 w-4 transition-transform duration-300 group-hover/feat:translate-x-1" />
+                      </span>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* FULL-SCREEN LOUNGE MENU (phones and tablets) */}
+      <div
+        className="fixed inset-0 z-[70] overflow-y-auto bg-[#050a1c] text-white"
+        style={{
+          clipPath: lounge ? 'circle(150% at 44px 48px)' : 'circle(0px at 44px 48px)',
+          visibility: lounge ? 'visible' : 'hidden',
+          transition: `clip-path .75s cubic-bezier(.77,0,.18,1), visibility 0s linear ${lounge ? '0s' : '.75s'}`,
+        }}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Menu"
+        aria-hidden={!lounge}
+      >
+        <div className="pointer-events-none fixed inset-0" aria-hidden="true">
+          <div className="absolute -right-32 -top-32 h-[520px] w-[520px] rounded-full bg-[radial-gradient(closest-side,rgba(47,123,255,0.25),transparent)]" />
+          <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,rgba(255,255,255,0.02)_0_2px,transparent_2px_4px)]" />
+          <span className="absolute -bottom-4 left-0 whitespace-nowrap text-[15vw] font-extrabold leading-none tracking-[0.06em] text-white/[0.03]">{BRAND.name}</span>
+        </div>
+
+        <div className="relative flex min-h-full flex-col px-5 pb-10 pt-3 sm:px-14">
+          <div className="flex items-center justify-between">
+            <button type="button" onClick={() => setLounge(false)} aria-label="Close menu" className={`${iconBtn} h-11 w-11 text-[#cfe0ff]`}>
+              <Icon d={ICONS.close} className="h-5 w-5" />
+            </button>
+            <span className="pb-2"><Wordmark className="text-[20px]" /></span>
+            <button type="button" onClick={() => setSearchOpen(true)} aria-label="Search" className={iconBtn}>
+              <Icon d={ICONS.search} className="h-[18px] w-[18px]" />
+            </button>
+          </div>
+
+          <div className="mt-8 flex flex-1 flex-col justify-center gap-1">
+            {allLinks.map(({ to, label, menu: hasMenu }, i) => (
+              <div
+                key={to}
+                className={`transition-all duration-700 ease-out ${lounge ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}
+                style={{ transitionDelay: lounge ? `${250 + i * 80}ms` : '0ms' }}
+              >
+                <NavLink
+                  to={to}
+                  end={to === '/'}
+                  className={({ isActive }) =>
+                    `group flex items-center gap-4 py-1 text-[clamp(2.6rem,9vw,5.5rem)] font-extrabold leading-[1.02] tracking-tight transition-colors duration-300 ${focusRing} ${
+                      isActive ? 'text-[#cfe0ff]' : 'text-zinc-600 hover:text-white'
+                    }`
+                  }
+                >
+                  {({ isActive }) => (
+                    <>
+                      <span className={`h-[3px] bg-[#2f7bff] shadow-[0_0_12px_rgba(47,123,255,0.85)] transition-all duration-500 ${isActive ? 'w-10 sm:w-16' : 'w-0 group-hover:w-10 sm:group-hover:w-16'}`} />
+                      {label}
+                    </>
+                  )}
+                </NavLink>
+                {hasMenu && (
+                  <div className="mb-2 flex flex-wrap gap-2 pl-1 pt-1">
+                    {services.map((s) => (
+                      <Link key={s.to} to={s.to} className={`border border-[#2f7bff]/50 px-4 py-1.5 text-lg font-semibold text-[#6fa0ff] transition hover:bg-[#2f7bff] hover:text-white ${focusRing}`}>
+                        {s.title}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div
+            className={`mt-10 flex flex-col gap-4 transition-all duration-700 ease-out sm:flex-row sm:items-center sm:justify-between ${lounge ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}
+            style={{ transitionDelay: lounge ? '650ms' : '0ms' }}
+          >
+            <Link to="/signup" className={`flex items-center justify-center gap-2 px-10 py-4 text-2xl font-extrabold tracking-wide text-white sm:w-auto ${focusRing}`} style={{ clipPath: 'polygon(14px 0,100% 0,calc(100% - 14px) 100%,0 100%)', backgroundImage: BLUE_BTN }}>
+              <Icon d={ICONS.crown} fill="currentColor" className="h-6 w-6" />
+              {BRAND.cta}
+            </Link>
+            <span className="text-lg font-semibold text-zinc-500">{BRAND.ticker[0]}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* SEARCH PALETTE (Ctrl+K) */}
+      {searchOpen && (
+        <div className="fixed inset-0 z-[80] flex items-start justify-center bg-black/80 px-4 pt-[15vh] backdrop-blur-sm" onClick={() => setSearchOpen(false)} role="dialog" aria-modal="true" aria-label="Search">
+          <div className={`vip-pop w-full max-w-lg ${panel}`} onClick={(e) => e.stopPropagation()}>
+            {panelLine}
+            <div className="flex items-center gap-3 border-b border-white/10 px-5 py-4 text-zinc-400">
+              <Icon d={ICONS.search} />
+              <input
+                autoFocus
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={onSearchKey}
+                placeholder="Search pages, laptops and services"
+                className="w-full bg-transparent text-lg text-white outline-none placeholder:text-zinc-600"
+              />
+            </div>
+            <div className="max-h-72 overflow-y-auto p-2">
+              {results.length === 0 && <p className="p-4 text-base text-zinc-500">No results for "{query}".</p>}
+              {results.map((r, i) => (
+                <button key={r.to + r.label} type="button" onMouseEnter={() => setActive(i)} onClick={() => go(r.to)} className={`flex w-full items-center justify-between px-4 py-3 text-left text-lg font-semibold transition ${i === active ? 'bg-white/[0.08] text-[#cfe0ff]' : 'text-zinc-300'}`}>
+                  {r.label}
+                  <Icon d={ICONS.arrow} className={`h-4 w-4 ${i === active ? 'text-[#2f7bff]' : 'opacity-30'}`} />
+                </button>
+              ))}
             </div>
           </div>
         </div>
       )}
-    </>
-  );
+    </header>
+  )
 }
+
+export default Navbar
