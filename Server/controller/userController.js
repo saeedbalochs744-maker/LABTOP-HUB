@@ -17,13 +17,13 @@ const signUp = async (req, res) => {
     const { name, email, password } = req.body;
 
     if (!name || !email || !password) {
-      return res.status(400).json({
+      return res.status(200).json({
         message: "All fields are required",
       });
     }
 
     if (password.length < 6) {
-      return res.status(400).json({
+      return res.status(200).json({
         message: "Password must be at least 6 characters",
       });
     }
@@ -31,7 +31,7 @@ const signUp = async (req, res) => {
     const exists = await User.findOne({ email });
 
     if (exists) {
-      return res.status(409).json({
+      return res.status(200).json({
         message: "Email already registered",
       });
     }
