@@ -1,11 +1,16 @@
+
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../Models/usermodel");
 
 // Create JWT token
 const createToken = (id) => {
+  if (!process.env.JWT_SECRET) {
+    throw new Error("JWT_SECRET is missing from .env");
+  }
+
   return jwt.sign(
-    { id },
+    { id: id.toString() },
     process.env.JWT_SECRET,
     { expiresIn: "7d" }
   );
@@ -16,37 +21,63 @@ const signUp = async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    if (!name || !email || !password) {
-      return res.status(200).json({
-        message: "All fields are required",
+    if (
+      typeof name !== "string" ||
+      typeof email !== "string" ||
+      typeof password !== "string"
+    ) {
+      return res.status(400).json({
+        message: "Name, email and password are required.",
       });
     }
 
-    if (password.length < 6) {
-      return res.status(200).json({
-        message: "Password must be at least 6 characters",
+    const cleanName = name.trim();
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (cleanName.length < 2 || cleanName.length > 80) {
+      return res.status(400).json({
+        message: "Name must contain 2 to 80 characters.",
       });
     }
 
-    const exists = await User.findOne({ email });
-
-    if (exists) {
-      return res.status(200).json({
-        message: "Email already registered",
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      return res.status(400).json({
+        message: "Please enter a valid email address.",
       });
     }
 
-    const hashed = await bcrypt.hash(password, 10);
+    if (
+      password.length < 8 ||
+      Buffer.byteLength(password, "utf8") > 72
+    ) {
+      return res.status(400).json({
+        message: "Password must be at least 8 characters and no more than 72 UTF-8 bytes.",
+      });
+    }
 
-    const user = await User.create({
-      name,
-      email,
-      password: hashed,
+    const existingUser = await User.findOne({
+      email: cleanEmail,
     });
 
-    res.status(201).json({
-      message: "Account created",
-      token: createToken(user._id),
+    if (existingUser) {
+      return res.status(409).json({
+        message: "This email is already registered.",
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    const user = await User.create({
+      name: cleanName,
+      email: cleanEmail,
+      password: hashedPassword,
+    });
+
+    const token = createToken(user._id);
+
+    return res.status(201).json({
+      message: "Account created successfully.",
+      token,
       user: {
         id: user._id,
         name: user.name,
@@ -54,8 +85,16 @@ const signUp = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({
-      message: error.message,
+    if (error.code === 11000) {
+      return res.status(409).json({
+        message: "This email is already registered.",
+      });
+    }
+
+    console.error("Signup error:", error.message);
+
+    return res.status(500).json({
+      message: "Account creation failed. Please try again.",
     });
   }
 };
@@ -65,34 +104,45 @@ const signIn = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    if (!email || !password) {
+    if (
+      typeof email !== "string" ||
+      typeof password !== "string" ||
+      !email.trim() ||
+      !password
+    ) {
       return res.status(400).json({
-        message: "Email and password required",
+        message: "Email and password are required.",
       });
     }
 
-    const user = await User.findOne({ email });
+    const cleanEmail = email.trim().toLowerCase();
+
+    const user = await User.findOne({
+      email: cleanEmail,
+    }).select("+password");
 
     if (!user) {
       return res.status(401).json({
-        message: "Invalid email or password",
+        message: "Invalid email or password.",
       });
     }
 
-    const match = await bcrypt.compare(
+    const passwordMatches = await bcrypt.compare(
       password,
       user.password
     );
 
-    if (!match) {
+    if (!passwordMatches) {
       return res.status(401).json({
-        message: "Invalid email or password",
+        message: "Invalid email or password.",
       });
     }
 
-    res.json({
-      message: "Signed in",
-      token: createToken(user._id),
+    const token = createToken(user._id);
+
+    return res.status(200).json({
+      message: "Signed in successfully.",
+      token,
       user: {
         id: user._id,
         name: user.name,
@@ -100,14 +150,15 @@ const signIn = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({
-      message: error.message,
+    console.error("Signin error:", error.message);
+
+    return res.status(500).json({
+      message: "Sign-in failed. Please try again.",
     });
   }
 };
 
 // GET /api/users/profile
-// Protected route
 const getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.userId)
@@ -115,69 +166,75 @@ const getProfile = async (req, res) => {
 
     if (!user) {
       return res.status(404).json({
-        message: "User not found",
+        message: "User not found.",
       });
     }
 
-    res.json(user);
+    return res.status(200).json({ user });
   } catch (error) {
-    res.status(500).json({
-      message: error.message,
+    console.error("Profile error:", error.message);
+
+    return res.status(500).json({
+      message: "Could not load your profile.",
     });
   }
 };
 
-// Requires a valid token
+// Require a valid JWT
 const protect = (req, res, next) => {
   const header = req.headers.authorization;
 
   if (!header || !header.startsWith("Bearer ")) {
     return res.status(401).json({
-      message: "Not authorized",
+      message: "Please sign in first.",
     });
   }
 
   try {
-    const token = header.split(" ")[1];
-
+    const token = header.slice(7);
     const decoded = jwt.verify(
       token,
       process.env.JWT_SECRET
     );
 
-    req.userId = decoded.id;
+    if (!decoded.id) {
+      return res.status(401).json({
+        message: "Invalid authentication token.",
+      });
+    }
 
-    next();
+    req.userId = decoded.id;
+    return next();
   } catch (error) {
-    res.status(401).json({
-      message: "Invalid or expired token",
+    return res.status(401).json({
+      message: "Invalid or expired token.",
     });
   }
 };
 
-// Works with or without a token
+// Optional authentication for guest-accessible routes
 const optionalAuth = (req, res, next) => {
   const header = req.headers.authorization;
 
   if (header && header.startsWith("Bearer ")) {
     try {
-      const token = header.split(" ")[1];
-
+      const token = header.slice(7);
       const decoded = jwt.verify(
         token,
         process.env.JWT_SECRET
       );
 
-      req.userId = decoded.id;
+      if (decoded.id) {
+        req.userId = decoded.id;
+      }
     } catch (error) {
-      // Invalid token: continue as guest
+      // Continue as guest if token is invalid.
     }
   }
 
-  next();
+  return next();
 };
 
-// CommonJS exports
 module.exports = {
   signUp,
   signIn,
