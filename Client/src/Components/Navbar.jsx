@@ -1,25 +1,31 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 
 /*
-  LAPTOPHUB VIP PRO MAX navbar  ("The Blue Coin")
-   1. A blue ticker runs across the very top of the page.
-   2. A full-width navy bar with a blue edge that lights up under the cursor.
-   3. The logo is a real coin hanging off the bar. Hover it and it flips.
-   4. The Service menu opens as a wide panel with a mini VIP member card.
-   5. On phones and tablets the menu opens as a full-screen "lounge" with huge links.
+  LAPTOPHUB navbar  -  v5 "Gamer"  (no extra packages: React, Tailwind, react-router-dom only)
+
+  Gamer look: neon blue glow, sharp edges, RGB lighting, keyboard-key links, gamepad logo.
+   1. A black status strip on top with a scrolling "//" ticker (folds away on scroll).
+   2. A full-width black bar with scan lines, your animated blue mesh, and an RGB gaming-light strip on the
+      bottom edge. A white slider on the strip shows how far you have scrolled.
+   3. Hexagon gamepad logo with a colour-cycling RGB ring, a flickering HUB and a glitch effect on hover.
+   4. Links are keyboard keys: they glow when you hover, and the page you are on is the key pressed down.
+   5. Slanted JOIN VIP button with a pulsing glow. Sharp search box, bell and menu panels with cut corners.
+   6. The Service menu has a VIP pass card that tilts toward your cursor.
+   7. Phones and tablets get a full-screen menu with huge italic links.
+   8. Smart header: hides when you scroll down, returns when you scroll up.
+  The font is inherited from your site, so it matches the rest of the page.
   All motion switches off for visitors who prefer reduced motion.
-  Palette: navy #050a1c, blue #2f7bff, ice #cfe0ff, deep blue #1e3a8a
-  Type: Barlow Condensed (falls back to Arial Narrow / system condensed)
+  Tip: put id="main" on your page content so the "Skip to content" link has somewhere to jump.
 */
 
 /* ============ SETTINGS ============ */
 const BRAND = {
   name: 'LAPTOPHUB',
-  nameA: 'LAPTOP', // first part of the logo text (silver shine)
-  nameB: 'HUB', // second part of the logo text (blue glow)
+  nameA: 'LAPTOP', // white part of the logo
+  nameB: 'HUB', // neon blue part of the logo
   cta: 'Join VIP',
-  badge: 'VIP MEMBER',
+  badge: 'VIP PASS',
   ticker: [
     'Genuine laptops with warranty',
     'Free shipping on selected models',
@@ -27,18 +33,20 @@ const BRAND = {
     'Join VIP today',
   ],
 }
+const SETTINGS = {
+  smartHide: true, // hide the header when scrolling down, show it when scrolling up
+  recentKey: 'lh-recent-searches', // localStorage key for recent searches
+}
 /* ================================== */
 
-const leftLinks = [
+const mainLinks = [
   { to: '/', label: 'Home' },
   { to: '/about', label: 'About' },
   { to: '/contact', label: 'Contact' },
-]
-const rightLinks = [
   { to: '/service', label: 'Service', menu: true },
-  { to: '/signin', label: 'Sign In' },
 ]
-const allLinks = [...leftLinks, ...rightLinks]
+const signIn = { to: '/signin', label: 'Sign In' }
+const allLinks = [...mainLinks, signIn]
 
 const services = [
   { to: '/service#consultation', title: 'Laptop consultation', desc: 'We help you pick the right laptop.', d: 'M3 5h18v12H3zM8 21h8M12 17v4' },
@@ -46,18 +54,19 @@ const services = [
   { to: '/service#support', title: 'Priority support', desc: 'Direct line to our team, any time.', d: 'M4 13v-1a8 8 0 0116 0v1M4 13h3v5H4zM17 13h3v5h-3zM17 18c0 2-2 3-5 3' },
 ]
 
-const notifications = [
-  { id: 1, text: 'Welcome to LaptopHub. Finish setting up your profile.' },
-  { id: 2, text: 'New gaming laptops just arrived.' },
+const INITIAL_NOTES = [
+  { id: 1, text: 'Welcome to LaptopHub. Finish setting up your profile.', time: 'Just now', read: false },
+  { id: 2, text: 'New gaming laptops just arrived.', time: 'Today', read: false },
 ]
 
+/* group order here is the order shown when the search box is empty */
 const searchItems = [
-  ...allLinks.map(({ to, label }) => ({ to, label })),
-  ...services.map(({ to, title }) => ({ to, label: title })),
-  { to: '/service#gaming', label: 'Gaming laptops' },
-  { to: '/service#business', label: 'Business laptops' },
-  { to: '/service#student', label: 'Student laptops' },
-  { to: '/signup', label: BRAND.cta },
+  ...allLinks.map(({ to, label }) => ({ to, label, group: 'Pages' })),
+  ...services.map(({ to, title }) => ({ to, label: title, group: 'Services' })),
+  { to: '/service#gaming', label: 'Gaming laptops', group: 'Laptops' },
+  { to: '/service#business', label: 'Business laptops', group: 'Laptops' },
+  { to: '/service#student', label: 'Student laptops', group: 'Laptops' },
+  { to: '/signup', label: BRAND.cta, group: 'Account' },
 ]
 
 const ICONS = {
@@ -68,117 +77,158 @@ const ICONS = {
   crown: 'M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5z',
   menu: 'M4 7h16M4 12h10M4 17h16',
   close: 'M6 6l12 12M18 6L6 18',
+  check: 'M5 12.5l4.5 4.5L19 7.5',
+  pad: 'M6 11h4M8 9v4M15 13h.01M18 11h.01M17.32 5H6.68a4 4 0 00-3.978 3.59C2.604 9.416 2 14.456 2 16a3 3 0 003 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 019.828 16h4.344a2 2 0 011.414.586L17 18c.5.5 1 1 2 1a3 3 0 003-3c0-1.545-.604-6.584-.685-7.258A4 4 0 0017.32 5z',
 }
 
 const Icon = ({ d, className = 'h-4 w-4', fill = 'none' }) => (
-  <svg viewBox="0 0 24 24" className={className} fill={fill} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  <svg viewBox="0 0 24 24" className={className} fill={fill} stroke="currentColor" strokeWidth="2" strokeLinecap="square" strokeLinejoin="miter" aria-hidden="true">
     <path d={d} />
   </svg>
 )
 
-const cut = (n) =>
-  `polygon(${n}px 0,calc(100% - ${n}px) 0,100% ${n}px,100% calc(100% - ${n}px),calc(100% - ${n}px) 100%,${n}px 100%,0 calc(100% - ${n}px),0 ${n}px)`
-const BLUE_BTN = 'linear-gradient(180deg,#6fa0ff,#2f7bff 55%,#1d4ed8)'
-const BLUE_FOIL = 'linear-gradient(115deg,#1e3a8a,#6fa0ff 35%,#2f7bff 55%,#1e3a8a)'
-const SLANT = 'polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%)'
+const NEON = '#3d8bff' // main neon blue
+const ICE = '#8ab8ff' // bright highlight
+const GLOW_TEXT = '[text-shadow:0_0_12px_rgba(47,123,255,0.9)]'
+const BLUE_BTN = 'linear-gradient(180deg,#4d95ff,#1d5bff)'
+const BLUE_PASS = 'linear-gradient(115deg,#1e3a8a,#5b95ff 35%,#2f7bff 55%,#1e3a8a)'
+const NEON_GRAD = 'linear-gradient(135deg,#8ab8ff,#2f7bff 40%,#1e3a8a)'
 
-const BAR_BIG = 80
+const HEX = 'polygon(25% 4%,75% 4%,100% 50%,75% 96%,25% 96%,0 50%)'
+const SLANT = 'polygon(14px 0,100% 0,calc(100% - 14px) 100%,0 100%)'
+const cutPoly = (n) => `polygon(0 0,calc(100% - ${n}px) 0,100% ${n}px,100% 100%,${n}px 100%,0 calc(100% - ${n}px))`
+
+const BAR_BIG = 72
 const BAR_SMALL = 60
 
 const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/i.test(navigator.platform || navigator.userAgent || '')
+
+/* ---------- search helpers ---------- */
+const score = (label, q) => {
+  const l = label.toLowerCase()
+  if (!q) return 1
+  if (l.startsWith(q)) return 4
+  if (l.split(' ').some((w) => w.startsWith(q))) return 3
+  if (l.includes(q)) return 2
+  let i = 0
+  for (const ch of l) if (ch === q[i]) i++
+  return i === q.length ? 1 : 0
+}
+
+const Hl = ({ text, q }) => {
+  const i = q ? text.toLowerCase().indexOf(q) : -1
+  if (i < 0) return text
+  return (
+    <>
+      {text.slice(0, i)}
+      <mark className="bg-transparent text-[#8ab8ff] underline decoration-[#3d8bff] decoration-2 underline-offset-4">{text.slice(i, i + q.length)}</mark>
+      {text.slice(i + q.length)}
+    </>
+  )
+}
+
+const loadRecent = () => {
+  try {
+    const v = JSON.parse(localStorage.getItem(SETTINGS.recentKey) || '[]')
+    return Array.isArray(v) ? v.filter((x) => typeof x === 'string').slice(0, 3) : []
+  } catch {
+    return []
+  }
+}
 
 const css = `
-@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&display=swap');
-.vip { font-family: 'Barlow Condensed', 'Arial Narrow', 'Roboto Condensed', system-ui, sans-serif; }
-.vip-grad-text { background-image: linear-gradient(180deg,#e6efff,#2f7bff 55%,#1d4ed8); }
-.vip-link::after { content:''; position:absolute; left:1.1rem; right:1.1rem; bottom:1.15rem; height:2px; background:#2f7bff; box-shadow:0 0 12px 1px rgba(47,123,255,.85); transform:scaleX(0); transform-origin:left; transition:transform .35s cubic-bezier(.22,1,.36,1) }
-.vip-link:hover::after, .vip-link[aria-current='page']::after { transform:scaleX(1) }
-.vip-marquee { animation: vip-marquee 38s linear infinite }
-.vip-rim { animation: vip-spin 9s linear infinite }
-.vip-pop { animation: vip-pop .22s ease-out }
-.vip-cta:hover .vip-sheen { animation: vip-shine .8s ease }
-.vip-word { transition: letter-spacing .5s cubic-bezier(.22,1,.36,1) }
-.vip-word:hover { letter-spacing: .24em }
-.vip-word-a, .vip-word-b { background-size: 250% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: vip-wordshine 4.5s ease-in-out infinite }
-.vip-word-a { background-image: linear-gradient(110deg,#aebfe0 0%,#dbe7ff 38%,#ffffff 50%,#dbe7ff 62%,#aebfe0 100%) }
-.vip-word-b { background-image: linear-gradient(110deg,#1d4ed8 0%,#2f7bff 38%,#d6e4ff 50%,#2f7bff 62%,#1d4ed8 100%); filter: drop-shadow(0 0 9px rgba(47,123,255,.65)); animation-delay: .25s }
-.vip-word-line { position:absolute; left:0; right:0; bottom:-7px; height:2px; background: linear-gradient(90deg, transparent, #2f7bff 30%, #9fc0ff 50%, #2f7bff 70%, transparent); opacity:.85; transform-origin:left; animation: vip-wordline 4.5s ease-in-out infinite }
-@keyframes vip-wordshine { 0%, 15% { background-position: 100% 0 } 55%, 100% { background-position: 0 0 } }
-@keyframes vip-wordline { 0%, 15% { transform: scaleX(.25); opacity:.4 } 55%, 100% { transform: scaleX(1); opacity:.9 } }
-.vip-shimmer { animation: vip-shimmer 5.5s ease-in-out infinite }
-.vip-halo { animation: vip-halo 3s ease-out infinite }
-@keyframes vip-shimmer { 0% { transform: translateX(-120%) } 100% { transform: translateX(420%) } }
-@keyframes vip-halo { 0% { transform: scale(.95); opacity: .7 } 100% { transform: scale(1.5); opacity: 0 } }
-@keyframes vip-marquee { to { transform: translateX(-25%) } }
-@keyframes vip-spin { to { transform: rotate(360deg) } }
-@keyframes vip-pop { from { opacity:0; transform: translateY(6px) } to { opacity:1; transform:none } }
-@keyframes vip-shine { from { transform: translateX(-130%) skewX(-22deg) } to { transform: translateX(380%) skewX(-22deg) } }
-@media (prefers-reduced-motion: reduce) { .vip-marquee, .vip-rim, .vip-pop, .vip-shimmer, .vip-halo, .vip-word-a, .vip-word-b, .vip-word-line, .vip-cta:hover .vip-sheen { animation: none } .vip-link::after { transition: none } }
+.gm-marquee { animation: gm-marquee 34s linear infinite }
+.gm-pop { animation: gm-pop .22s ease-out }
+.gm-cta:hover .gm-sheen { animation: gm-shine .8s ease }
+.gm-shimmer { animation: gm-shimmer 4.5s ease-in-out infinite }
+.gm-pulse { filter: drop-shadow(0 0 10px rgba(47,123,255,.6)); animation: gm-pulse 2.6s ease-in-out infinite }
+.gm-flicker { animation: gm-flicker 7s linear infinite }
+.gm-glitch { position: relative; display: inline-block }
+.gm-glitch::before, .gm-glitch::after { content: attr(data-text); position: absolute; left: 0; top: 0; opacity: 0; pointer-events: none; white-space: nowrap }
+.gm-glitch::before { color: #6fa8ff }
+.gm-glitch::after { color: #ffffff }
+.gm-logo:hover .gm-glitch::before { opacity: .9; animation: gm-g1 .5s steps(2, end) infinite }
+.gm-logo:hover .gm-glitch::after { opacity: .6; animation: gm-g2 .5s steps(2, end) infinite }
+.gm-card { transform: rotate(-3deg) perspective(600px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)); transition: transform .15s ease-out }
+.gm-feat:hover .gm-card { transform: rotate(0deg) perspective(600px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) scale(1.05) }
+.gm-glare { background: radial-gradient(120px circle at calc(50% + var(--ry,0deg) * -4) calc(50% + var(--rx,0deg) * 4), rgba(255,255,255,.35), transparent 70%); opacity: 0; transition: opacity .2s }
+.gm-feat:hover .gm-glare { opacity: 1 }
+.gm-rgb-bg { background-image: linear-gradient(90deg,#ff2d6f,#ffb02d,#2dff8a,#2dc8ff,#6a2dff,#ff2d6f); background-size: 200% 100%; animation: gm-rgb 4s linear infinite }
+.gm-key { background: linear-gradient(180deg,#10224d,#091433); border: 1px solid #2a4a9a; border-bottom-width: 4px; border-bottom-color: #16296a; border-radius: 2px; box-shadow: inset 0 1px 0 rgba(255,255,255,.12); transition: transform .1s, border-color .2s, box-shadow .2s, background .2s, color .2s }
+.gm-key:hover { border-color: #6fa8ff; border-bottom-color: #2a4a9a; box-shadow: 0 0 16px rgba(47,123,255,.6), inset 0 1px 0 rgba(255,255,255,.2); transform: translateY(-1px) }
+.gm-key-on { background: linear-gradient(180deg,#2461f0,#1238a0); border-color: #8ab8ff; box-shadow: 0 0 22px rgba(47,123,255,.8), inset 0 0 12px rgba(255,255,255,.22) }
+.gm-key:active, .gm-key-on, .gm-key-on:hover { border-bottom-width: 1px; transform: translateY(3px) }
+@keyframes gm-rgb { to { background-position: 200% 0 } }
+@keyframes gm-shimmer { 0% { transform: translateX(-120%) } 100% { transform: translateX(420%) } }
+@keyframes gm-pulse { 0%, 100% { filter: drop-shadow(0 0 10px rgba(47,123,255,.55)) } 50% { filter: drop-shadow(0 0 22px rgba(47,123,255,1)) } }
+@keyframes gm-flicker { 0%, 18%, 22%, 62%, 64%, 100% { opacity: 1 } 20%, 63% { opacity: .45 } 21% { opacity: .9 } }
+@keyframes gm-g1 { 0% { clip-path: inset(10% 0 60% 0); transform: translate(-3px, 0) } 50% { clip-path: inset(55% 0 12% 0); transform: translate(3px, 0) } 100% { clip-path: inset(30% 0 40% 0); transform: translate(-2px, 0) } }
+@keyframes gm-g2 { 0% { clip-path: inset(60% 0 10% 0); transform: translate(3px, 0) } 50% { clip-path: inset(15% 0 55% 0); transform: translate(-3px, 0) } 100% { clip-path: inset(40% 0 30% 0); transform: translate(2px, 0) } }
+@keyframes gm-marquee { to { transform: translateX(-25%) } }
+@keyframes gm-pop { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
+@keyframes gm-shine { from { transform: translateX(-130%) skewX(-22deg) } to { transform: translateX(380%) skewX(-22deg) } }
+@media (prefers-reduced-motion: reduce) {
+  .gm-marquee, .gm-pop, .gm-shimmer, .gm-pulse, .gm-flicker, .gm-rgb-bg, .gm-cta:hover .gm-sheen, .gm-logo:hover .gm-glitch::before, .gm-logo:hover .gm-glitch::after { animation: none }
+  .gm-card { transition: none }
+  .gm-card, .gm-feat:hover .gm-card { transform: rotate(-3deg) }
+}
 `
 
-/* Crest on the coin: an "L" for LaptopHub */
-const Crest = ({ className = 'h-8 w-7' }) => (
-  <svg viewBox="0 0 40 44" className={className} aria-hidden="true">
-    <defs>
-      <linearGradient id="vipg" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stopColor="#e6efff" />
-        <stop offset=".55" stopColor="#2f7bff" />
-        <stop offset="1" stopColor="#1e3a8a" />
-      </linearGradient>
-    </defs>
-    <path d="M20 1l17 6v17c0 9-7 16-17 19C10 40 3 33 3 24V7z" fill="#050a1c" stroke="url(#vipg)" strokeWidth="2" />
-    <path d="M14 12v19h13" fill="none" stroke="url(#vipg)" strokeWidth="3.4" strokeLinecap="square" />
-  </svg>
+/* Small L-shaped corner marks, the HUD touch on sharp buttons */
+const Ticks = () => (
+  <>
+    <span className="pointer-events-none absolute left-0 top-0 h-1.5 w-1.5 border-l-2 border-t-2 border-[#8ab8ff]" aria-hidden="true" />
+    <span className="pointer-events-none absolute bottom-0 right-0 h-1.5 w-1.5 border-b-2 border-r-2 border-[#8ab8ff]" aria-hidden="true" />
+  </>
 )
 
-/* The coin logo: milled edge, shimmering rim, flips on hover */
-const Coin = ({ scrolled, top }) => (
-  <div className="pointer-events-none absolute left-1/2 z-30 h-[92px] w-[92px] -translate-x-1/2 transition-[top] duration-500" style={{ top }}>
-    <Link
-      to="/"
-      aria-label="LaptopHub home"
-      className="group pointer-events-auto block h-full w-full rounded-full transition-transform duration-500 [perspective:700px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cfe0ff]"
-      style={{ transform: scrolled ? 'scale(.78)' : 'scale(1)' }}
-    >
-      <span className="vip-halo pointer-events-none absolute inset-0 rounded-full border border-[#2f7bff]/60" aria-hidden="true" />
-      <span className="relative block h-full w-full rounded-full drop-shadow-[0_10px_18px_rgba(47,123,255,0.5)] transition-transform duration-[900ms] ease-out group-hover:[transform:rotateY(360deg)]">
-        <span className="vip-rim absolute inset-0 rounded-full" style={{ backgroundImage: 'conic-gradient(#e6efff,#2f7bff,#1e3a8a,#2f7bff,#e6efff,#2f7bff,#1e3a8a,#2f7bff,#e6efff)' }} />
-        <span className="absolute inset-0 rounded-full" style={{ backgroundImage: 'repeating-conic-gradient(rgba(0,0,0,0.5) 0 1.6deg, transparent 1.6deg 6deg)' }} />
-        <span className="absolute inset-[7px] rounded-full" style={{ backgroundImage: 'linear-gradient(145deg,#e6efff,#2f7bff 45%,#1e3a8a)' }} />
-        <span className="absolute inset-[11px] rounded-full bg-[#050a1c]" />
-        <span className="absolute inset-[15px] rounded-full border border-[#2f7bff]/60" />
-        <span className="absolute inset-0 flex items-center justify-center"><Crest /></span>
-      </span>
-    </Link>
+/* Panel with a neon outline and one cut corner top-right and bottom-left */
+const Frame = ({ n = 14, className = '', children }) => (
+  <div className={`drop-shadow-[0_0_18px_rgba(47,123,255,0.35)] ${className}`}>
+    <div style={{ clipPath: cutPoly(n), backgroundImage: NEON_GRAD, padding: 1 }}>
+      <div className="bg-[#04070f]" style={{ clipPath: cutPoly(n) }}>
+        {children}
+      </div>
+    </div>
   </div>
 )
 
-/* Blue ticker strip */
+/* Logo: glowing hexagon + italic black wordmark with a flickering HUB and a glitch on hover */
+const Logo = ({ focusRing }) => (
+  <Link to="/" aria-label={`${BRAND.name} home`} className={`gm-logo group flex items-center gap-3 ${focusRing}`}>
+    <span className="drop-shadow-[0_0_12px_rgba(47,123,255,0.85)] transition-transform duration-300 group-hover:scale-110">
+      <span className="gm-rgb-bg relative flex h-11 w-11 items-center justify-center" style={{ clipPath: HEX }}>
+        <span className="absolute inset-[2px] flex items-center justify-center bg-[#04070f]" style={{ clipPath: HEX }}>
+          <Icon d={ICONS.pad} className="h-5 w-5 text-[#8ab8ff]" />
+        </span>
+      </span>
+    </span>
+    <span className="hidden sm:block">
+      <span className="gm-glitch text-[24px] font-black uppercase italic leading-none tracking-tight" data-text={BRAND.name}>
+        <span className="text-white">{BRAND.nameA}</span>
+        <span className={`gm-flicker text-[#3d8bff] ${GLOW_TEXT}`}>{BRAND.nameB}</span>
+      </span>
+    </span>
+  </Link>
+)
+
+/* Black status strip with a "//" ticker */
 const Ticker = () => (
-  <div className="group overflow-hidden text-white" style={{ backgroundImage: 'linear-gradient(90deg,#1e3a8a,#2563eb 25%,#2f7bff 50%,#2563eb 75%,#1e3a8a)' }}>
-    <div className="vip-marquee flex w-max group-hover:[animation-play-state:paused]">
+  <div className="group overflow-hidden border-b border-[#2f7bff]/30 bg-[#02040b] text-[#6fa8ff]">
+    <div className="gm-marquee flex w-max group-hover:[animation-play-state:paused]">
       {[0, 1, 2, 3].map((copy) => (
         <div key={copy} className="flex shrink-0 items-center" aria-hidden={copy > 0}>
           {BRAND.ticker.map((text) => (
-            <span key={text} className="flex items-center whitespace-nowrap py-1.5 pl-6 text-[14px] font-bold tracking-wide">
+            <span key={text} className="flex items-center whitespace-nowrap py-1.5 pl-6 text-[12px] font-bold uppercase tracking-[0.18em]">
               {text}
-              <span className="ml-6 h-1.5 w-1.5 rotate-45 bg-white/70" />
+              <span className={`ml-6 font-black text-[#3d8bff] ${GLOW_TEXT}`}>{'//'}</span>
             </span>
           ))}
         </div>
       ))}
     </div>
   </div>
-)
-
-/* Stylish logo text: silver part + glowing blue part, a light sweep, a growing underline.
-   Change the words in BRAND.nameA and BRAND.nameB at the top of the file. */
-const Wordmark = ({ className = 'text-[26px]' }) => (
-  <span className={`vip-word relative inline-flex items-baseline font-extrabold uppercase leading-none tracking-[0.16em] ${className}`}>
-    <span className="vip-word-a">{BRAND.nameA}</span>
-    <span className="vip-word-b">{BRAND.nameB}</span>
-    <span className="vip-word-line" aria-hidden="true" />
-  </span>
 )
 
 /* Network lines: a faint dark-blue mesh. Glowing streaks travel along its lines at a
@@ -393,23 +443,39 @@ const Navbar = () => {
   const location = useLocation()
   const navigate = useNavigate()
   const [scrolled, setScrolled] = useState(false)
+  const [hidden, setHidden] = useState(false)
   const [progress, setProgress] = useState(0)
   const [lounge, setLounge] = useState(false)
   const [menu, setMenu] = useState(false)
   const [bell, setBell] = useState(false)
-  const [unread, setUnread] = useState(notifications.length)
+  const [notes, setNotes] = useState(INITIAL_NOTES)
   const [searchOpen, setSearchOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
+  const [recent, setRecent] = useState(loadRecent)
+
   const barRef = useRef(null)
   const bellRef = useRef(null)
   const closeTimer = useRef(null)
   const ctaBox = useRef(null)
+  const loungeRef = useRef(null)
+  const loungeCloseRef = useRef(null)
+  const menuBtnRef = useRef(null)
+  const lastFocus = useRef(null)
+  const live = useRef({ menu, bell, searchOpen, lounge })
+  live.current = { menu, bell, searchOpen, lounge }
 
   const barH = scrolled ? BAR_SMALL : BAR_BIG
+  const unread = notes.filter((n) => !n.read).length
+  const q = query.trim().toLowerCase()
 
   const showMenu = () => { clearTimeout(closeTimer.current); setMenu(true) }
   const hideMenu = () => { clearTimeout(closeTimer.current); closeTimer.current = setTimeout(() => setMenu(false), 180) }
+
+  const openSearch = () => {
+    if (!live.current.searchOpen) lastFocus.current = document.activeElement
+    setSearchOpen(true)
+  }
 
   // cursor spotlight on the bar: writes CSS variables, no React re-render
   const onBarMove = (e) => {
@@ -427,20 +493,55 @@ const Navbar = () => {
   const ctaMove = (e) => {
     if (reduceMotion() || !ctaBox.current) return
     const b = ctaBox.current
-    e.currentTarget.style.transform = `translate(${(e.clientX - (b.left + b.width / 2)) * 0.22}px, ${(e.clientY - (b.top + b.height / 2)) * 0.32}px)`
+    e.currentTarget.style.transform = `translate(${(e.clientX - (b.left + b.width / 2)) * 0.18}px, ${(e.clientY - (b.top + b.height / 2)) * 0.28}px)`
   }
   const ctaLeave = (e) => { e.currentTarget.style.transform = '' }
 
+  // VIP pass card tilts toward the cursor (CSS variables only, no re-render)
+  const tilt = (e) => {
+    if (reduceMotion()) return
+    const r = e.currentTarget.getBoundingClientRect()
+    const x = (e.clientX - r.left) / r.width - 0.5
+    const y = (e.clientY - r.top) / r.height - 0.5
+    e.currentTarget.style.setProperty('--ry', `${(x * 22).toFixed(1)}deg`)
+    e.currentTarget.style.setProperty('--rx', `${(-y * 22).toFixed(1)}deg`)
+  }
+  const untilt = (e) => {
+    e.currentTarget.style.removeProperty('--ry')
+    e.currentTarget.style.removeProperty('--rx')
+  }
+
   useEffect(() => {
-    const onScroll = () => {
+    let lastY = window.scrollY
+    let ticking = false
+    const update = () => {
+      ticking = false
+      const y = window.scrollY
       const max = document.documentElement.scrollHeight - window.innerHeight
-      setScrolled(window.scrollY > 16)
-      setProgress(max > 0 ? Math.min(100, (window.scrollY / max) * 100) : 0)
+      setScrolled(y > 16)
+      setProgress(max > 0 ? Math.min(100, (y / max) * 100) : 0)
+      if (SETTINGS.smartHide) {
+        const { menu: m, bell: b, searchOpen: s, lounge: l } = live.current
+        const dy = y - lastY
+        if (m || b || s || l || y < 120) setHidden(false)
+        else if (dy > 6) setHidden(true)
+        else if (dy < -6) setHidden(false)
+      }
+      lastY = y
+    }
+    const onScroll = () => {
+      if (ticking) return
+      ticking = true
+      requestAnimationFrame(update)
     }
     const onKey = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault()
-        setSearchOpen((v) => !v)
+        if (live.current.searchOpen) setSearchOpen(false)
+        else {
+          lastFocus.current = document.activeElement
+          setSearchOpen(true)
+        }
       }
       if (e.key === 'Escape') {
         setSearchOpen(false)
@@ -452,7 +553,7 @@ const Navbar = () => {
     const onDown = (e) => {
       if (bellRef.current && !bellRef.current.contains(e.target)) setBell(false)
     }
-    onScroll()
+    update()
     window.addEventListener('scroll', onScroll, { passive: true })
     window.addEventListener('keydown', onKey)
     document.addEventListener('mousedown', onDown)
@@ -464,203 +565,339 @@ const Navbar = () => {
     }
   }, [])
 
+  // route change: close everything and make sure the header is visible
   useEffect(() => {
     setLounge(false)
     setMenu(false)
     setBell(false)
     setSearchOpen(false)
+    setHidden(false)
   }, [location.pathname, location.hash])
 
+  // /service#warranty: scroll to the section and leave room for the bar
   useEffect(() => {
-    document.body.style.overflow = lounge ? 'hidden' : ''
+    if (!location.hash) return
+    const t = setTimeout(() => {
+      const el = document.getElementById(decodeURIComponent(location.hash.slice(1)))
+      if (el) {
+        window.scrollTo({
+          top: el.getBoundingClientRect().top + window.scrollY - (BAR_SMALL + 24),
+          behavior: reduceMotion() ? 'auto' : 'smooth',
+        })
+      }
+    }, 120)
+    return () => clearTimeout(t)
+  }, [location.pathname, location.hash])
+
+  // lock page scroll behind the lounge and the search palette
+  useEffect(() => {
+    document.body.style.overflow = lounge || searchOpen ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
+  }, [lounge, searchOpen])
+
+  // lounge: hide it from keyboard and screen readers when closed, focus it when open, restore focus after
+  const loungeWasOpen = useRef(false)
+  useEffect(() => {
+    if (loungeRef.current) loungeRef.current.inert = !lounge
+    if (lounge) {
+      loungeWasOpen.current = true
+      loungeCloseRef.current?.focus()
+    } else if (loungeWasOpen.current) {
+      loungeWasOpen.current = false
+      menuBtnRef.current?.focus()
+    }
   }, [lounge])
 
-  useEffect(() => setActive(0), [query, searchOpen])
+  // search: give focus back to whatever opened it
+  const searchWasOpen = useRef(false)
+  useEffect(() => {
+    if (searchOpen) searchWasOpen.current = true
+    else if (searchWasOpen.current) {
+      searchWasOpen.current = false
+      lastFocus.current?.focus?.()
+    }
+  }, [searchOpen])
 
-  const results = searchItems.filter((i) => i.label.toLowerCase().includes(query.toLowerCase()))
-  const go = (to) => {
+  useEffect(() => setActive(0), [query, searchOpen])
+  useEffect(() => {
+    if (searchOpen) document.getElementById(`gm-opt-${active}`)?.scrollIntoView({ block: 'nearest' })
+  }, [active, searchOpen])
+
+  const results = useMemo(() => {
+    if (!q) {
+      const rec = recent.map((l) => searchItems.find((i) => i.label === l)).filter(Boolean).map((i) => ({ ...i, group: 'Recent' }))
+      return [...rec, ...searchItems]
+    }
+    return searchItems
+      .map((i) => ({ i, s: score(i.label, q) }))
+      .filter((x) => x.s > 0)
+      .sort((a, b) => b.s - a.s)
+      .map((x) => x.i)
+  }, [q, recent])
+
+  const go = (item) => {
+    const next = [item.label, ...recent.filter((l) => l !== item.label)].slice(0, 3)
+    setRecent(next)
+    try { localStorage.setItem(SETTINGS.recentKey, JSON.stringify(next)) } catch { /* storage can be blocked, ignore */ }
     setSearchOpen(false)
     setQuery('')
-    navigate(to)
+    navigate(item.to)
   }
   const onSearchKey = (e) => {
     if (e.key === 'ArrowDown') { e.preventDefault(); setActive((i) => Math.min(i + 1, results.length - 1)) }
     if (e.key === 'ArrowUp') { e.preventDefault(); setActive((i) => Math.max(i - 1, 0)) }
-    if (e.key === 'Enter' && results[active]) go(results[active].to)
+    if (e.key === 'Enter' && results[active]) go(results[active])
   }
 
-  const focusRing = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f7bff]'
-  const linkClass = ({ isActive }) =>
-    `vip-link relative flex items-center gap-1.5 px-[1.1rem] text-[17px] font-semibold tracking-wide transition-colors duration-300 ${focusRing} ${
-      isActive ? 'text-[#cfe0ff]' : 'text-zinc-400 hover:text-white'
-    }`
-  const iconBtn = `relative flex h-10 w-10 items-center justify-center border border-white/10 bg-white/[0.03] text-zinc-300 transition hover:border-[#2f7bff]/70 hover:text-[#cfe0ff] ${focusRing}`
-  const panel = 'border border-[#2f7bff]/30 bg-[#070d1f] shadow-[0_28px_60px_-10px_rgba(0,0,0,1)]'
-  const panelLine = <div className="h-[2px] bg-gradient-to-r from-transparent via-[#2f7bff] to-transparent" />
+  const readOne = (id) => setNotes((list) => list.map((n) => (n.id === id ? { ...n, read: true } : n)))
+  const readAll = () => setNotes((list) => list.map((n) => ({ ...n, read: true })))
+
+  const focusRing = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3d8bff]'
+  const iconBtn = `group relative flex h-10 w-10 items-center justify-center border border-[#2f7bff]/40 bg-[#06102b] text-zinc-300 transition hover:border-[#8ab8ff] hover:text-white hover:shadow-[0_0_18px_rgba(47,123,255,0.55)] ${focusRing}`
+  const panelLine = <div className="h-[2px] bg-gradient-to-r from-transparent via-[#3d8bff] to-transparent" />
 
   const renderLink = ({ to, label, menu: hasMenu }) => (
     <div
       key={to}
-      className="flex self-stretch"
+      className="flex"
       onMouseEnter={hasMenu ? showMenu : undefined}
       onMouseLeave={hasMenu ? hideMenu : undefined}
       onFocus={hasMenu ? showMenu : undefined}
       onBlur={hasMenu ? (e) => !e.currentTarget.contains(e.relatedTarget) && hideMenu() : undefined}
     >
-      <NavLink to={to} end={to === '/'} className={linkClass}>
+      <NavLink
+        to={to}
+        end={to === '/'}
+        className={({ isActive }) =>
+          `gm-key relative flex items-center gap-1.5 px-5 py-2 text-[13px] font-black uppercase tracking-wider ${focusRing} ${
+            isActive ? `gm-key-on text-white ${GLOW_TEXT}` : 'text-zinc-300 hover:text-white'
+          }`
+        }
+        {...(hasMenu ? { 'aria-haspopup': 'true', 'aria-expanded': menu } : {})}
+      >
         {label}
-        {hasMenu && <Icon d={ICONS.chevron} className={`h-3.5 w-3.5 transition-transform duration-300 ${menu ? 'rotate-180 text-[#2f7bff]' : ''}`} />}
+        {hasMenu && <Icon d={ICONS.chevron} className={`h-3.5 w-3.5 transition-transform duration-300 ${menu ? 'rotate-180 text-[#3d8bff]' : ''}`} />}
       </NavLink>
     </div>
   )
 
   return (
-    <header className="vip sticky top-0 z-50">
+    <header
+      className="sticky top-0 z-50 transition-transform duration-500 ease-out"
+      style={{ transform: hidden ? 'translateY(calc(-100% - 24px))' : undefined }}
+      onFocusCapture={() => setHidden(false)}
+    >
       <style>{css}</style>
 
-      {/* TICKER: folds away on scroll */}
+      <a
+        href="#main"
+        className="fixed left-3 top-3 z-[100] -translate-y-[200%] bg-[#3d8bff] px-4 py-2 text-base font-extrabold uppercase text-white transition-transform focus:translate-y-0 focus:outline-none focus:ring-2 focus:ring-white"
+      >
+        Skip to content
+      </a>
+
+      {/* STATUS STRIP: folds away on scroll */}
       <div className={`overflow-hidden transition-all duration-500 ${scrolled ? 'max-h-0' : 'max-h-9'}`} aria-hidden={scrolled}>
         <Ticker />
       </div>
 
       {/* MAIN BAR */}
       <div ref={barRef} className="relative" onMouseMove={onBarMove} onMouseLeave={onBarLeave}>
-        <div className="pointer-events-none absolute inset-0 overflow-hidden bg-[#050a1c] shadow-[0_22px_40px_-14px_rgba(0,0,0,0.75)]" aria-hidden="true">
-          <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,rgba(255,255,255,0.022)_0_2px,transparent_2px_4px)]" />
+        <div className="pointer-events-none absolute inset-0 overflow-hidden bg-[#03060f]/95 backdrop-blur-xl" aria-hidden="true">
+          <div className="absolute inset-0 bg-[repeating-linear-gradient(0deg,rgba(255,255,255,0.025)_0_1px,transparent_1px_3px)]" />
           <StreakBackground />
-          <div className="absolute -left-24 top-0 h-full w-80 bg-[radial-gradient(closest-side,rgba(47,123,255,0.18),transparent)]" />
-          <div className="absolute -right-24 top-0 h-full w-80 bg-[radial-gradient(closest-side,rgba(47,123,255,0.18),transparent)]" />
+          <div className="absolute -left-24 top-0 h-full w-96 bg-[radial-gradient(closest-side,rgba(47,123,255,0.22),transparent)]" />
+          <div className="absolute -right-24 top-0 h-full w-96 bg-[radial-gradient(closest-side,rgba(47,123,255,0.22),transparent)]" />
           <div
             className="absolute inset-0 transition-opacity duration-500"
-            style={{ opacity: 'var(--so, 0)', backgroundImage: 'radial-gradient(420px circle at var(--mx,50%) var(--my,50%), rgba(47,123,255,0.22), transparent 65%)' }}
+            style={{ opacity: 'var(--so, 0)', backgroundImage: 'radial-gradient(420px circle at var(--mx,50%) var(--my,50%), rgba(47,123,255,0.24), transparent 65%)' }}
           />
-          <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[#2f7bff]/80 to-transparent" />
-          <div className="vip-shimmer absolute bottom-0 left-0 h-[2px] w-1/4 bg-gradient-to-r from-transparent via-[#9fc0ff] to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 h-[2px] overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-[#1e3a8a] via-[#2f7bff] to-[#9fc0ff] shadow-[0_0_10px_rgba(47,123,255,0.9)] transition-[width] duration-150" style={{ width: `${progress}%` }} />
-          </div>
         </div>
 
-        <nav aria-label="Main" className="relative mx-auto grid max-w-[1400px] grid-cols-[1fr_auto_1fr] items-stretch px-3 transition-[height] duration-500 sm:px-8" style={{ height: barH }}>
+        {/* RGB gaming-light strip on the bottom edge, with a white slider that shows the scroll position */}
+        <div className="gm-rgb-bg pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[2px] shadow-[0_0_14px_2px_rgba(61,139,255,0.7),0_6px_30px_rgba(47,123,255,0.3)]" aria-hidden="true" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10" aria-hidden="true">
+          <span
+            className="absolute -bottom-[3px] h-2 w-7 -translate-x-1/2 bg-white shadow-[0_0_12px_3px_rgba(255,255,255,0.8)] transition-[left] duration-150"
+            style={{ left: `calc(14px + (100% - 28px) * ${progress / 100})` }}
+          />
+        </div>
+
+        {/* corner brackets */}
+        <span className="pointer-events-none absolute left-0 top-0 z-10 h-3 w-3 border-l-2 border-t-2 border-[#8ab8ff]" aria-hidden="true" />
+        <span className="pointer-events-none absolute right-0 top-0 z-10 h-3 w-3 border-r-2 border-t-2 border-[#8ab8ff]" aria-hidden="true" />
+
+        <nav aria-label="Main" className="relative mx-auto flex max-w-[1500px] items-center justify-between px-4 transition-[height] duration-500 sm:px-8 xl:grid xl:grid-cols-[1fr_auto_1fr]" style={{ height: barH }}>
           {/* LEFT */}
-          <div className="flex items-center gap-3 xl:gap-8">
-            <button type="button" onClick={() => setLounge(true)} aria-label="Open menu" className={`${iconBtn} h-11 w-11 text-[#cfe0ff] xl:hidden`}>
+          <div className="flex items-center gap-3">
+            <button ref={menuBtnRef} type="button" onClick={() => setLounge(true)} aria-label="Open menu" aria-expanded={lounge} className={`${iconBtn} text-[#cfe0ff] xl:hidden`}>
               <Icon d={ICONS.menu} className="h-5 w-5" />
+              <Ticks />
             </button>
-            <Link to="/" aria-label={`${BRAND.name} home`} className={`hidden pb-2 sm:block ${focusRing}`}>
-              <Wordmark />
-            </Link>
-            <div className="hidden self-stretch xl:flex">{leftLinks.map(renderLink)}</div>
+            <Logo focusRing={focusRing} />
           </div>
 
-          {/* CENTER: space for the coin */}
-          <div className="w-24" aria-hidden="true" />
+          {/* CENTER: links styled as keyboard keys */}
+          <div className="hidden items-start gap-2 self-center xl:flex">
+            {mainLinks.map(renderLink)}
+          </div>
 
           {/* RIGHT */}
-          <div className="flex items-center justify-end gap-2">
-            <div className="hidden self-stretch xl:flex">{rightLinks.map(renderLink)}</div>
-            <span className="mx-2 hidden h-6 w-px bg-white/15 xl:block" aria-hidden="true" />
+          <div className="flex items-center justify-end gap-2.5">
+            <NavLink
+              to={signIn.to}
+              className={({ isActive }) =>
+                `gm-key hidden self-center px-5 py-2 text-[13px] font-black uppercase tracking-wider xl:block ${focusRing} ${isActive ? `gm-key-on text-white ${GLOW_TEXT}` : 'text-zinc-300 hover:text-white'}`
+              }
+            >
+              {signIn.label}
+            </NavLink>
 
-            <button type="button" onClick={() => setSearchOpen(true)} title="Search (Ctrl K)" aria-label="Search" className={iconBtn}>
+            {/* search: sharp box with the shortcut on desktop, icon on smaller screens */}
+            <button
+              type="button"
+              onClick={openSearch}
+              aria-label="Search"
+              className={`group relative hidden h-10 items-center gap-3 border border-[#2f7bff]/40 bg-[#06102b] pl-3 pr-2 text-[14px] font-bold uppercase tracking-wider text-zinc-400 transition hover:border-[#8ab8ff] hover:text-white hover:shadow-[0_0_18px_rgba(47,123,255,0.55)] xl:flex ${focusRing}`}
+            >
               <Icon d={ICONS.search} className="h-[18px] w-[18px]" />
+              <span className="pr-5">Search</span>
+              <kbd className="border border-[#2f7bff]/50 bg-[#2f7bff]/10 px-1.5 py-0.5 text-[11px] font-black leading-none text-[#8ab8ff]">{IS_MAC ? '\u2318 K' : 'Ctrl K'}</kbd>
+              <Ticks />
+            </button>
+            <button type="button" onClick={openSearch} aria-label="Search" className={`${iconBtn} xl:hidden`}>
+              <Icon d={ICONS.search} className="h-[18px] w-[18px]" />
+              <Ticks />
             </button>
 
             <div className="relative hidden xl:block" ref={bellRef}>
-              <button type="button" aria-label="Notifications" aria-expanded={bell} onClick={() => { setBell((v) => !v); setUnread(0) }} className={iconBtn}>
+              <button
+                type="button"
+                aria-label={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}
+                aria-expanded={bell}
+                onClick={() => setBell((v) => !v)}
+                className={iconBtn}
+              >
                 <Icon d={ICONS.bell} className="h-[18px] w-[18px]" />
-                {unread > 0 && <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center bg-[#2f7bff] px-1 text-[11px] font-bold text-white">{unread}</span>}
+                <Ticks />
+                {unread > 0 && <span className="absolute -right-1.5 -top-1.5 z-10 flex h-4 min-w-4 items-center justify-center bg-[#3d8bff] px-1 text-[11px] font-black text-white shadow-[0_0_10px_rgba(47,123,255,0.9)]">{unread}</span>}
               </button>
               {bell && (
-                <div className="vip-pop absolute right-0 top-full z-40 w-72 pt-4">
-                  <div className={panel}>
+                <div className="absolute right-0 top-full z-40 w-80 pt-3">
+                  <Frame className="gm-pop">
                     {panelLine}
-                    <div className="p-2">
-                      {notifications.map((n) => (
-                        <p key={n.id} className="p-3 text-[15px] leading-snug text-zinc-300 hover:bg-white/[0.06]">{n.text}</p>
+                    <div className="flex items-center justify-between px-4 pb-1 pt-3">
+                      <span className="text-sm font-black uppercase tracking-wider text-white">Notifications</span>
+                      <button
+                        type="button"
+                        onClick={readAll}
+                        disabled={unread === 0}
+                        className={`flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-[#6fa8ff] transition hover:text-white disabled:cursor-default disabled:text-zinc-600 disabled:hover:text-zinc-600 ${focusRing}`}
+                      >
+                        <Icon d={ICONS.check} className="h-3.5 w-3.5" />
+                        Mark all read
+                      </button>
+                    </div>
+                    <div className="p-2 pb-4">
+                      {notes.length === 0 && <p className="p-3 text-[15px] text-zinc-500">You're all caught up.</p>}
+                      {notes.map((n) => (
+                        <button
+                          key={n.id}
+                          type="button"
+                          onClick={() => readOne(n.id)}
+                          className={`flex w-full items-start gap-3 border-l-2 p-3 text-left transition hover:bg-[#2f7bff]/10 ${n.read ? 'border-transparent' : 'border-[#3d8bff]'} ${focusRing}`}
+                        >
+                          <span className="block">
+                            <span className={`block text-[15px] leading-snug ${n.read ? 'text-zinc-500' : 'text-zinc-200'}`}>{n.text}</span>
+                            <span className="mt-0.5 block text-xs font-bold uppercase tracking-wider text-zinc-600">{n.time}</span>
+                          </span>
+                        </button>
                       ))}
                     </div>
-                  </div>
+                  </Frame>
                 </div>
               )}
             </div>
 
-            <Link
-              to="/signup"
-              onMouseEnter={ctaEnter}
-              onMouseMove={ctaMove}
-              onMouseLeave={ctaLeave}
-              className={`vip-cta group relative ml-1 hidden overflow-hidden px-7 py-2.5 text-[17px] font-extrabold tracking-wide text-white transition-transform duration-200 ease-out xl:block ${focusRing}`}
-              style={{ clipPath: SLANT, backgroundImage: BLUE_BTN }}
-            >
-              <span className="vip-sheen pointer-events-none absolute inset-y-0 left-0 w-1/4 -translate-x-[130%] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
-              <span className="relative flex items-center gap-2">
-                <Icon d={ICONS.crown} fill="currentColor" className="h-4 w-4" />
-                {BRAND.cta}
+            <Link to="/signup" onMouseEnter={ctaEnter} onMouseMove={ctaMove} onMouseLeave={ctaLeave} className={`gm-cta ml-1 hidden transition-transform duration-200 ease-out xl:block ${focusRing}`}>
+              <span className="gm-pulse block">
+                <span className="relative flex items-center gap-2 overflow-hidden px-8 py-3 text-[14px] font-black uppercase italic tracking-wider text-white" style={{ clipPath: SLANT, backgroundImage: BLUE_BTN }}>
+                  <span className="gm-sheen pointer-events-none absolute inset-y-0 left-0 w-1/4 -translate-x-[130%] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
+                  <Icon d={ICONS.crown} fill="currentColor" className="relative h-4 w-4" />
+                  <span className="relative">{BRAND.cta}</span>
+                </span>
               </span>
             </Link>
-            <Link to="/signup" aria-label={BRAND.cta} className={`flex h-11 w-11 items-center justify-center text-white xl:hidden ${focusRing}`} style={{ clipPath: 'polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%)', backgroundImage: BLUE_BTN }}>
-              <Icon d={ICONS.crown} fill="currentColor" className="h-5 w-5" />
+            <Link to="/signup" aria-label={BRAND.cta} className={`gm-pulse block xl:hidden ${focusRing}`}>
+              <span className="flex h-10 w-11 items-center justify-center text-white" style={{ clipPath: SLANT, backgroundImage: BLUE_BTN }}>
+                <Icon d={ICONS.crown} fill="currentColor" className="h-5 w-5" />
+              </span>
             </Link>
           </div>
         </nav>
 
-        <Coin scrolled={scrolled} top={barH - 52} />
-
-        {/* SERVICE PANEL (desktop) */}
+        {/* SERVICE PANEL (desktop), centred under the links */}
         {menu && (
-          <div className="pointer-events-none absolute inset-x-0 top-full z-40 hidden xl:block">
-            <div className="mx-auto flex max-w-[1400px] justify-end px-8">
-              <div className="vip-pop pointer-events-auto w-[540px] pt-3" onMouseEnter={showMenu} onMouseLeave={hideMenu}>
-                <div className={panel}>
-                  {panelLine}
-                  <div className="grid grid-cols-[1.2fr_1fr] gap-2 p-2">
-                    <div>
-                      {services.map((s) => (
-                        <Link key={s.to} to={s.to} className={`group/item flex items-start gap-3 p-3 transition hover:bg-white/[0.06] ${focusRing}`}>
-                          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center border border-[#2f7bff]/50 text-[#2f7bff] transition group-hover/item:bg-[#2f7bff] group-hover/item:text-white">
-                            <Icon d={s.d} className="h-[18px] w-[18px]" />
-                          </span>
-                          <span>
-                            <span className="block text-[17px] font-bold leading-tight text-white">{s.title}</span>
-                            <span className="mt-0.5 block text-sm leading-snug text-zinc-400">{s.desc}</span>
-                          </span>
-                        </Link>
-                      ))}
-                    </div>
+          <div className="pointer-events-none absolute left-1/2 top-full z-40 hidden -translate-x-1/2 xl:block">
+            <div className="pointer-events-auto w-[600px] pt-3" onMouseEnter={showMenu} onMouseLeave={hideMenu}>
+              <Frame n={18} className="gm-pop">
+                {panelLine}
+                <div className="grid grid-cols-[1.2fr_1fr] gap-2 p-2 pb-4">
+                  <div>
+                    {services.map((s) => (
+                      <Link key={s.to} to={s.to} className={`group/item flex items-start gap-3 border-l-2 border-transparent p-3 transition hover:border-[#3d8bff] hover:bg-[#2f7bff]/10 ${focusRing}`}>
+                        <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center border border-[#3d8bff]/50 bg-[#2f7bff]/10 text-[#6fa8ff] transition group-hover/item:bg-[#3d8bff] group-hover/item:text-white group-hover/item:shadow-[0_0_14px_rgba(47,123,255,0.8)]">
+                          <Icon d={s.d} className="h-[18px] w-[18px]" />
+                        </span>
+                        <span>
+                          <span className="block text-[15px] font-black uppercase leading-tight tracking-wide text-white">{s.title}</span>
+                          <span className="mt-1 block text-sm leading-snug text-zinc-400">{s.desc}</span>
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
 
-                    <Link to="/signup" className={`group/feat relative flex flex-col justify-end overflow-hidden border border-[#2f7bff]/40 bg-[repeating-linear-gradient(135deg,rgba(47,123,255,0.08)_0_2px,transparent_2px_9px)] p-4 ${focusRing}`}>
-                      <span className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-[#2f7bff]/25 blur-2xl transition group-hover/feat:bg-[#2f7bff]/40" />
+                  <Link
+                    to="/signup"
+                    onMouseMove={tilt}
+                    onMouseLeave={untilt}
+                    className={`gm-feat group/feat relative flex flex-col justify-end overflow-hidden border border-[#3d8bff]/40 bg-[#2f7bff]/[0.07] p-4 ${focusRing}`}
+                  >
+                    <Ticks />
+                    <span className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-[#2f7bff]/30 blur-2xl transition group-hover/feat:bg-[#2f7bff]/50" />
+                    <span className="drop-shadow-[0_0_14px_rgba(47,123,255,0.7)]">
                       <span
-                        className="relative mb-4 flex h-[72px] w-32 -rotate-3 flex-col justify-between p-2.5 text-white shadow-[0_10px_24px_-6px_rgba(47,123,255,0.55)] transition-transform duration-500 group-hover/feat:rotate-0 group-hover/feat:scale-105"
-                        style={{ clipPath: cut(9), backgroundImage: BLUE_FOIL }}
+                        className="gm-card relative mb-4 flex h-[72px] w-32 flex-col justify-between overflow-hidden p-2.5 text-white"
+                        style={{ clipPath: cutPoly(10), backgroundImage: BLUE_PASS }}
                         aria-hidden="true"
                       >
-                        <span className="flex items-center justify-between">
-                          <span className="text-[13px] font-extrabold leading-none tracking-[0.2em]">{BRAND.name}</span>
+                        <span className="gm-glare pointer-events-none absolute inset-0" />
+                        <span className="relative flex items-center justify-between">
+                          <span className="text-[11px] font-black italic leading-none tracking-wider">{BRAND.name}</span>
                           <Icon d={ICONS.crown} fill="currentColor" className="h-4 w-4" />
                         </span>
-                        <span className="text-[12px] font-bold leading-none tracking-[0.18em]">{BRAND.badge}</span>
+                        <span className="relative text-[10px] font-black leading-none tracking-[0.2em]">{BRAND.badge}</span>
                       </span>
-                      <span className="relative text-xl font-extrabold leading-tight text-[#cfe0ff]">Skip the queue</span>
-                      <span className="relative mt-1 text-sm leading-snug text-zinc-400">Priority support and early access to new laptop drops.</span>
-                      <span className="relative mt-3 flex items-center gap-1.5 text-[15px] font-bold text-white">
-                        {BRAND.cta} <Icon d={ICONS.arrow} className="h-4 w-4 transition-transform duration-300 group-hover/feat:translate-x-1" />
-                      </span>
-                    </Link>
-                  </div>
+                    </span>
+                    <span className="relative text-lg font-black uppercase italic leading-tight text-white">Skip the queue</span>
+                    <span className="relative mt-1 text-sm leading-snug text-zinc-400">Priority support and early access to new laptop drops.</span>
+                    <span className={`relative mt-3 flex items-center gap-1.5 text-sm font-black uppercase tracking-wider text-[#6fa8ff] ${GLOW_TEXT}`}>
+                      {BRAND.cta} <Icon d={ICONS.arrow} className="h-4 w-4 transition-transform duration-300 group-hover/feat:translate-x-1" />
+                    </span>
+                  </Link>
                 </div>
-              </div>
+              </Frame>
             </div>
           </div>
         )}
       </div>
 
-      {/* FULL-SCREEN LOUNGE MENU (phones and tablets) */}
+      {/* FULL-SCREEN MENU (phones and tablets) */}
       <div
-        className="fixed inset-0 z-[70] overflow-y-auto bg-[#050a1c] text-white"
+        ref={loungeRef}
+        className="fixed inset-0 z-[70] overflow-y-auto bg-[#03060f] text-white"
         style={{
-          clipPath: lounge ? 'circle(150% at 44px 48px)' : 'circle(0px at 44px 48px)',
+          clipPath: lounge ? 'circle(150% at 44px 52px)' : 'circle(0px at 44px 52px)',
           visibility: lounge ? 'visible' : 'hidden',
           transition: `clip-path .75s cubic-bezier(.77,0,.18,1), visibility 0s linear ${lounge ? '0s' : '.75s'}`,
         }}
@@ -670,19 +907,26 @@ const Navbar = () => {
         aria-hidden={!lounge}
       >
         <div className="pointer-events-none fixed inset-0" aria-hidden="true">
-          <div className="absolute -right-32 -top-32 h-[520px] w-[520px] rounded-full bg-[radial-gradient(closest-side,rgba(47,123,255,0.25),transparent)]" />
-          <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,rgba(255,255,255,0.02)_0_2px,transparent_2px_4px)]" />
-          <span className="absolute -bottom-4 left-0 whitespace-nowrap text-[15vw] font-extrabold leading-none tracking-[0.06em] text-white/[0.03]">{BRAND.name}</span>
+          <div className="absolute inset-0 bg-[repeating-linear-gradient(0deg,rgba(255,255,255,0.025)_0_1px,transparent_1px_3px)]" />
+          <div className="absolute -right-32 -top-32 h-[520px] w-[520px] rounded-full bg-[radial-gradient(closest-side,rgba(47,123,255,0.3),transparent)]" />
+          <div className="absolute -bottom-40 -left-32 h-[480px] w-[480px] rounded-full bg-[radial-gradient(closest-side,rgba(47,123,255,0.18),transparent)]" />
+          <span className="absolute left-0 top-0 h-6 w-6 border-l-2 border-t-2 border-[#8ab8ff]" />
+          <span className="absolute bottom-0 right-0 h-6 w-6 border-b-2 border-r-2 border-[#8ab8ff]" />
         </div>
 
-        <div className="relative flex min-h-full flex-col px-5 pb-10 pt-3 sm:px-14">
+        <div className="relative flex min-h-full flex-col px-5 pb-10 pt-4 sm:px-14">
           <div className="flex items-center justify-between">
-            <button type="button" onClick={() => setLounge(false)} aria-label="Close menu" className={`${iconBtn} h-11 w-11 text-[#cfe0ff]`}>
+            <button ref={loungeCloseRef} type="button" onClick={() => setLounge(false)} aria-label="Close menu" className={`${iconBtn} text-[#cfe0ff]`}>
               <Icon d={ICONS.close} className="h-5 w-5" />
+              <Ticks />
             </button>
-            <span className="pb-2"><Wordmark className="text-[20px]" /></span>
-            <button type="button" onClick={() => setSearchOpen(true)} aria-label="Search" className={iconBtn}>
+            <span className="text-xl font-black uppercase italic tracking-tight">
+              {BRAND.nameA}
+              <span className={`text-[#3d8bff] ${GLOW_TEXT}`}>{BRAND.nameB}</span>
+            </span>
+            <button type="button" onClick={openSearch} aria-label="Search" className={iconBtn}>
               <Icon d={ICONS.search} className="h-[18px] w-[18px]" />
+              <Ticks />
             </button>
           </div>
 
@@ -697,14 +941,14 @@ const Navbar = () => {
                   to={to}
                   end={to === '/'}
                   className={({ isActive }) =>
-                    `group flex items-center gap-4 py-1 text-[clamp(2.6rem,9vw,5.5rem)] font-extrabold leading-[1.02] tracking-tight transition-colors duration-300 ${focusRing} ${
-                      isActive ? 'text-[#cfe0ff]' : 'text-zinc-600 hover:text-white'
+                    `group flex items-center gap-4 py-1 text-[clamp(2.4rem,9vw,5rem)] font-black uppercase italic leading-[1.05] tracking-tight transition-colors duration-300 ${focusRing} ${
+                      isActive ? `text-[#3d8bff] ${GLOW_TEXT}` : 'text-zinc-600 hover:text-white'
                     }`
                   }
                 >
                   {({ isActive }) => (
                     <>
-                      <span className={`h-[3px] bg-[#2f7bff] shadow-[0_0_12px_rgba(47,123,255,0.85)] transition-all duration-500 ${isActive ? 'w-10 sm:w-16' : 'w-0 group-hover:w-10 sm:group-hover:w-16'}`} />
+                      <span className={`overflow-hidden whitespace-nowrap text-[#3d8bff] transition-all duration-500 ${isActive ? 'w-[1.4em] opacity-100' : 'w-0 opacity-0 group-hover:w-[1.4em] group-hover:opacity-100'}`} aria-hidden="true">{'//'}</span>
                       {label}
                     </>
                   )}
@@ -712,7 +956,7 @@ const Navbar = () => {
                 {hasMenu && (
                   <div className="mb-2 flex flex-wrap gap-2 pl-1 pt-1">
                     {services.map((s) => (
-                      <Link key={s.to} to={s.to} className={`border border-[#2f7bff]/50 px-4 py-1.5 text-lg font-semibold text-[#6fa0ff] transition hover:bg-[#2f7bff] hover:text-white ${focusRing}`}>
+                      <Link key={s.to} to={s.to} className={`border border-[#3d8bff]/60 px-4 py-1.5 text-sm font-extrabold uppercase tracking-wider text-[#6fa8ff] transition hover:bg-[#3d8bff] hover:text-white hover:shadow-[0_0_16px_rgba(47,123,255,0.8)] ${focusRing}`}>
                         {s.title}
                       </Link>
                     ))}
@@ -726,40 +970,77 @@ const Navbar = () => {
             className={`mt-10 flex flex-col gap-4 transition-all duration-700 ease-out sm:flex-row sm:items-center sm:justify-between ${lounge ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}
             style={{ transitionDelay: lounge ? '650ms' : '0ms' }}
           >
-            <Link to="/signup" className={`flex items-center justify-center gap-2 px-10 py-4 text-2xl font-extrabold tracking-wide text-white sm:w-auto ${focusRing}`} style={{ clipPath: 'polygon(14px 0,100% 0,calc(100% - 14px) 100%,0 100%)', backgroundImage: BLUE_BTN }}>
-              <Icon d={ICONS.crown} fill="currentColor" className="h-6 w-6" />
-              {BRAND.cta}
+            <Link to="/signup" className={`gm-pulse block ${focusRing}`}>
+              <span className="flex items-center justify-center gap-2 px-12 py-4 text-xl font-black uppercase italic tracking-wider text-white" style={{ clipPath: SLANT, backgroundImage: BLUE_BTN }}>
+                <Icon d={ICONS.crown} fill="currentColor" className="h-6 w-6" />
+                {BRAND.cta}
+              </span>
             </Link>
-            <span className="text-lg font-semibold text-zinc-500">{BRAND.ticker[0]}</span>
+            <span className="text-sm font-bold uppercase tracking-[0.18em] text-zinc-500">{BRAND.ticker[0]}</span>
           </div>
         </div>
       </div>
 
-      {/* SEARCH PALETTE (Ctrl+K) */}
+      {/* SEARCH PALETTE (Ctrl/Cmd+K) */}
       {searchOpen && (
         <div className="fixed inset-0 z-[80] flex items-start justify-center bg-black/80 px-4 pt-[15vh] backdrop-blur-sm" onClick={() => setSearchOpen(false)} role="dialog" aria-modal="true" aria-label="Search">
-          <div className={`vip-pop w-full max-w-lg ${panel}`} onClick={(e) => e.stopPropagation()}>
-            {panelLine}
-            <div className="flex items-center gap-3 border-b border-white/10 px-5 py-4 text-zinc-400">
-              <Icon d={ICONS.search} />
-              <input
-                autoFocus
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={onSearchKey}
-                placeholder="Search pages, laptops and services"
-                className="w-full bg-transparent text-lg text-white outline-none placeholder:text-zinc-600"
-              />
-            </div>
-            <div className="max-h-72 overflow-y-auto p-2">
-              {results.length === 0 && <p className="p-4 text-base text-zinc-500">No results for "{query}".</p>}
-              {results.map((r, i) => (
-                <button key={r.to + r.label} type="button" onMouseEnter={() => setActive(i)} onClick={() => go(r.to)} className={`flex w-full items-center justify-between px-4 py-3 text-left text-lg font-semibold transition ${i === active ? 'bg-white/[0.08] text-[#cfe0ff]' : 'text-zinc-300'}`}>
-                  {r.label}
-                  <Icon d={ICONS.arrow} className={`h-4 w-4 ${i === active ? 'text-[#2f7bff]' : 'opacity-30'}`} />
-                </button>
-              ))}
-            </div>
+          <div className="w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
+            <Frame n={18} className="gm-pop">
+              {panelLine}
+              <div className="flex items-center gap-3 border-b border-[#2f7bff]/25 px-5 py-4 text-[#6fa8ff]">
+                <Icon d={ICONS.search} />
+                <input
+                  autoFocus
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={onSearchKey}
+                  placeholder="SEARCH PAGES, LAPTOPS AND SERVICES"
+                  role="combobox"
+                  aria-expanded="true"
+                  aria-controls="gm-results"
+                  aria-activedescendant={results[active] ? `gm-opt-${active}` : undefined}
+                  aria-autocomplete="list"
+                  className="w-full bg-transparent text-base font-bold uppercase tracking-wider text-white outline-none placeholder:text-zinc-600"
+                />
+                <kbd className="hidden border border-[#2f7bff]/50 px-1.5 py-0.5 text-[11px] font-black leading-none text-[#8ab8ff] sm:block">Esc</kbd>
+              </div>
+              <div id="gm-results" role="listbox" aria-label="Results" className="max-h-80 overflow-y-auto p-2">
+                {results.length === 0 && (
+                  <p className="p-4 text-base text-zinc-500">
+                    Nothing matches "{query}". Try "gaming", "warranty" or "support".
+                  </p>
+                )}
+                {results.map((r, i) => (
+                  <React.Fragment key={`${r.group}-${r.to}-${r.label}`}>
+                    {!q && (i === 0 || results[i - 1].group !== r.group) && (
+                      <p className="px-4 pb-1 pt-3 text-xs font-black uppercase tracking-[0.2em] text-[#3d8bff]/70" role="presentation">{r.group}</p>
+                    )}
+                    <button
+                      id={`gm-opt-${i}`}
+                      role="option"
+                      aria-selected={i === active}
+                      type="button"
+                      onMouseEnter={() => setActive(i)}
+                      onClick={() => go(r)}
+                      className={`flex w-full items-center justify-between border-l-2 px-4 py-3 text-left text-base font-bold uppercase tracking-wide transition ${
+                        i === active ? 'border-[#3d8bff] bg-[#2f7bff]/15 text-white' : 'border-transparent text-zinc-300'
+                      }`}
+                    >
+                      <span className="flex items-baseline gap-3">
+                        <Hl text={r.label} q={q} />
+                        {q && <span className="text-xs font-bold tracking-wider text-zinc-600">{r.group}</span>}
+                      </span>
+                      <Icon d={ICONS.arrow} className={`h-4 w-4 ${i === active ? 'text-[#3d8bff]' : 'opacity-30'}`} />
+                    </button>
+                  </React.Fragment>
+                ))}
+              </div>
+              <div className="flex items-center gap-4 border-t border-[#2f7bff]/25 px-5 py-2.5 pb-4 text-xs font-bold uppercase tracking-wider text-zinc-600" aria-hidden="true">
+                <span><kbd className="mr-1 text-[#6fa8ff]">{'\u2191\u2193'}</kbd>move</span>
+                <span><kbd className="mr-1 text-[#6fa8ff]">{'\u21B5'}</kbd>open</span>
+                <span><kbd className="mr-1 text-[#6fa8ff]">Esc</kbd>close</span>
+              </div>
+            </Frame>
           </div>
         </div>
       )}
