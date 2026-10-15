@@ -1,21 +1,22 @@
-const dotenv = require("dotenv");
-dotenv.config();const express = require("express");
+
+require("dotenv").config();
+
+const express = require("express");
 const cors = require("cors");
+
 const connectDB = require("./config/db");
 const userRouter = require("./routes/userRouter");
 const productRouter = require("./routes/productRouter");
 
-dotenv.config();
-
 const app = express();
-
-// Connect MongoDB
-connectDB();
 
 // Middleware
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    origin: [
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+    ],
   })
 );
 
@@ -33,7 +34,7 @@ app.get("/", (req, res) => {
 app.use("/api/users", userRouter);
 app.use("/api/products", productRouter);
 
-// 404
+// 404 handler
 app.use((req, res) => {
   res.status(404).json({
     message: "Route not found",
@@ -42,7 +43,7 @@ app.use((req, res) => {
 
 // Error handler
 app.use((err, req, res, next) => {
-  console.error(err);
+  console.error("Server error:", err);
 
   res.status(500).json({
     message: "Something went wrong",
@@ -53,4 +54,8 @@ const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+
+  // Connect to MongoDB
+  connectDB();
 });
+

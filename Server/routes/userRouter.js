@@ -1,3 +1,4 @@
+
 const express = require("express");
 
 const {
@@ -9,13 +10,13 @@ const {
 
 const router = express.Router();
 
-// POST /api/users/signup
-router.post("/signup", signUp);
+// Create account
+router.post("/", signUp);
 
-// POST /api/users/signin
+// Sign in
 router.post("/signin", signIn);
 
-// GET /api/users/profile
+// User profile
 router.get("/profile", protect, getProfile);
 
 module.exports = router;

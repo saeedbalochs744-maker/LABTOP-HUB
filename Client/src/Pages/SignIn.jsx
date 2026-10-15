@@ -1,315 +1,152 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { api } from "./api";
 
-export default function SignIn() {
+const SignIn = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const [form, setForm] = useState({
-    email: "",
-    password: "",
-  });
-
+  const [form, setForm] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
-  const [remember, setRemember] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-
-    setForm((previous) => ({
-      ...previous,
-      [name]: value,
-    }));
-
-    setError("");
-    setSuccess("");
+    setForm({ ...form, [e.target.name]: e.target.value });
+    if (error) setError("");
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    setError("");
-    setSuccess("");
-
-    if (!form.email.trim()) {
-      setError("Please enter your email address.");
-      return;
-    }
-
-    if (!form.email.includes("@")) {
-      setError("Please enter a valid email address.");
-      return;
-    }
-
-    if (!form.password) {
-      setError("Please enter your password.");
-      return;
-    }
-
-    if (form.password.length < 8) {
-      setError("Password must be at least 8 characters.");
+    if (!form.email.trim() || !form.password) {
+      setError("Email and password are required.");
       return;
     }
 
     setLoading(true);
 
-    setTimeout(() => {
-      setLoading(false);
-      setSuccess("Sign in successful. Welcome back to LaptopHub!");
+    try {
+      const data = await api("/users/login", {
+        method: "POST",
+        body: JSON.stringify({
+          email: form.email.trim(),
+          password: form.password,
+        }),
+      });
 
-      setTimeout(() => {
-        navigate("/");
-      }, 1200);
-    }, 1000);
+      localStorage.setItem("token", data.token);
+      navigate(location.state?.from || "/", { replace: true });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <main className="min-h-screen bg-slate-950 px-4 py-16 text-white">
-      <div className="mx-auto grid max-w-6xl overflow-hidden rounded-[32px] border border-white/10 bg-slate-900/70 shadow-2xl shadow-black/50 lg:grid-cols-2">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 px-6 py-16 text-white">
+      <div className="absolute -right-40 -top-40 h-[450px] w-[450px] rounded-full bg-blue-600/20 blur-[120px]" />
+      <div className="absolute -bottom-40 -left-40 h-[400px] w-[400px] rounded-full bg-cyan-500/10 blur-[120px]" />
 
-        {/* LEFT SIDE */}
-        <section className="relative hidden overflow-hidden bg-gradient-to-br from-blue-700 via-blue-900 to-slate-950 p-12 lg:flex lg:flex-col lg:justify-between">
-
-          <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-cyan-400/20 blur-3xl" />
-          <div className="absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-blue-500/20 blur-3xl" />
-
-          <div className="relative z-10">
-            <Link to="/" className="inline-flex items-center gap-3">
-              <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-xl font-black text-blue-700">
-                L
-              </span>
-
-              <span className="text-2xl font-black">
-                Laptop<span className="text-cyan-300">Hub</span>
-              </span>
-            </Link>
-
-            <div className="mt-24">
-              <p className="text-xs font-black uppercase tracking-[0.35em] text-blue-200">
-                Welcome Back
-              </p>
-
-              <h1 className="mt-5 max-w-md text-5xl font-black leading-[1.05]">
-                TECHNOLOGY
-                <br />
-                FOR YOUR
-                <br />
-                NEXT MOVE.
-              </h1>
-
-              <p className="mt-7 max-w-md text-sm leading-7 text-blue-100/70">
-                Sign in to your LaptopHub account and continue
-                exploring premium laptops, technology and support.
-              </p>
-            </div>
+      <form
+        onSubmit={handleSubmit}
+        noValidate
+        className="relative w-full max-w-md space-y-6 rounded-3xl border border-white/10 bg-slate-900 p-8 shadow-2xl sm:p-10"
+      >
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-500/10 px-4 py-1.5">
+            <span className="text-xs">👑</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.25em] text-blue-300">
+              VIP Club
+            </span>
           </div>
 
-          <div className="relative z-10 grid grid-cols-3 gap-3">
-            {[
-              ["100+", "Laptops"],
-              ["20+", "Brands"],
-              ["24/7", "Support"],
-            ].map(([number, label]) => (
-              <div
-                key={label}
-                className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur"
-              >
-                <p className="text-xl font-black">{number}</p>
-                <p className="mt-1 text-[10px] uppercase tracking-wider text-blue-200/60">
-                  {label}
-                </p>
-              </div>
-            ))}
+          <h1 className="mt-4 text-4xl font-black uppercase">
+            Sign <span className="text-blue-500">In</span>
+          </h1>
+          <p className="mt-2 text-sm text-slate-500">
+            Welcome back. Enter your details to continue.
+          </p>
+        </div>
+
+        {error && (
+          <div className="rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-400">
+            {error}
           </div>
-        </section>
+        )}
 
-        {/* RIGHT SIDE */}
-        <section className="p-6 sm:p-10 lg:p-14">
+        <div>
+          <label
+            htmlFor="email"
+            className="mb-2 block text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500"
+          >
+            Email
+          </label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            value={form.email}
+            onChange={handleChange}
+            placeholder="you@example.com"
+            autoComplete="email"
+            className="w-full rounded-xl border border-white/10 bg-slate-950 px-5 py-4 text-sm text-white outline-none transition placeholder:text-slate-700 focus:border-blue-500"
+          />
+        </div>
 
-          <div className="mx-auto max-w-md">
-
-            {/* MOBILE LOGO */}
-            <Link
-              to="/"
-              className="mb-10 flex items-center gap-3 lg:hidden"
+        <div>
+          <label
+            htmlFor="password"
+            className="mb-2 block text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500"
+          >
+            Password
+          </label>
+          <div className="relative">
+            <input
+              id="password"
+              name="password"
+              type={showPassword ? "text" : "password"}
+              value={form.password}
+              onChange={handleChange}
+              placeholder="Your password"
+              autoComplete="current-password"
+              className="w-full rounded-xl border border-white/10 bg-slate-950 px-5 py-4 pr-20 text-sm text-white outline-none transition placeholder:text-slate-700 focus:border-blue-500"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold uppercase text-slate-500 hover:text-blue-400"
             >
-              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-600 text-xl font-black">
-                L
-              </span>
-
-              <span className="text-xl font-black">
-                Laptop<span className="text-blue-400">Hub</span>
-              </span>
-            </Link>
-
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.3em] text-blue-400">
-                Account Access
-              </p>
-
-              <h2 className="mt-3 text-4xl font-black tracking-tight">
-                Welcome back.
-              </h2>
-
-              <p className="mt-3 text-sm leading-6 text-slate-500">
-                Sign in to continue to your LaptopHub account.
-              </p>
-            </div>
-
-            {/* ERROR */}
-            {error && (
-              <div className="mt-7 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
-                {error}
-              </div>
-            )}
-
-            {/* SUCCESS */}
-            {success && (
-              <div className="mt-7 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
-                {success}
-              </div>
-            )}
-
-            <form
-              onSubmit={handleSubmit}
-              className="mt-8 space-y-5"
-            >
-
-              {/* EMAIL */}
-              <div>
-                <label
-                  htmlFor="email"
-                  className="mb-2 block text-xs font-bold text-slate-300"
-                >
-                  Email Address
-                </label>
-
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  value={form.email}
-                  onChange={handleChange}
-                  placeholder="you@example.com"
-                  className="h-14 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition placeholder:text-slate-700 focus:border-blue-500 focus:bg-blue-500/[0.04]"
-                />
-              </div>
-
-              {/* PASSWORD */}
-              <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <label
-                    htmlFor="password"
-                    className="text-xs font-bold text-slate-300"
-                  >
-                    Password
-                  </label>
-
-                  <button
-                    type="button"
-                    className="text-[11px] font-bold text-blue-400 hover:text-blue-300"
-                  >
-                    Forgot password?
-                  </button>
-                </div>
-
-                <div className="relative">
-
-                  <input
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    value={form.password}
-                    onChange={handleChange}
-                    placeholder="Enter your password"
-                    className="h-14 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 pr-16 text-sm text-white outline-none transition placeholder:text-slate-700 focus:border-blue-500 focus:bg-blue-500/[0.04]"
-                  />
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setShowPassword((previous) => !previous)
-                    }
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-500 hover:text-white"
-                  >
-                    {showPassword ? "HIDE" : "SHOW"}
-                  </button>
-
-                </div>
-              </div>
-
-              {/* REMEMBER */}
-              <label className="flex cursor-pointer items-center gap-3">
-                <input
-                  type="checkbox"
-                  checked={remember}
-                  onChange={(e) =>
-                    setRemember(e.target.checked)
-                  }
-                  className="h-4 w-4 accent-blue-600"
-                />
-
-                <span className="text-xs text-slate-500">
-                  Remember me on this device
-                </span>
-              </label>
-
-              {/* SUBMIT */}
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex h-14 w-full items-center justify-center rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 text-sm font-black text-white shadow-xl shadow-blue-600/20 transition hover:-translate-y-0.5 hover:shadow-blue-500/30 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {loading ? (
-                  <span className="flex items-center gap-3">
-                    <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                    Signing In...
-                  </span>
-                ) : (
-                  "Sign In →"
-                )}
-              </button>
-            </form>
-
-            {/* DIVIDER */}
-            <div className="my-8 flex items-center gap-4">
-              <div className="h-px flex-1 bg-white/10" />
-              <span className="text-[10px] uppercase tracking-widest text-slate-700">
-                OR
-              </span>
-              <div className="h-px flex-1 bg-white/10" />
-            </div>
-
-            {/* CREATE ACCOUNT */}
-            <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 text-center">
-
-              <p className="text-sm text-slate-500">
-                Don't have a LaptopHub account?
-              </p>
-
-              <Link
-                to="/signup"
-                className="mt-3 inline-block text-sm font-black text-blue-400 transition hover:text-cyan-300"
-              >
-                Create Account →
-              </Link>
-
-            </div>
-
-            {/* BACK HOME */}
-            <Link
-              to="/"
-              className="mt-7 block text-center text-xs font-bold text-slate-600 transition hover:text-white"
-            >
-              ← Back to LaptopHub
-            </Link>
-
+              {showPassword ? "Hide" : "Show"}
+            </button>
           </div>
+        </div>
 
-        </section>
-      </div>
-    </main>
+        <button
+          type="submit"
+          disabled={loading}
+          className="flex w-full items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 py-4 text-xs font-black uppercase tracking-[0.2em] shadow-lg shadow-blue-600/30 transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {loading ? (
+            <>
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              Signing in...
+            </>
+          ) : (
+            "Sign In"
+          )}
+        </button>
+
+        <p className="text-center text-sm text-slate-500">
+          No account?{" "}
+          <Link to="/signup" className="font-bold text-blue-400 hover:text-blue-300">
+            Create one
+          </Link>
+        </p>
+      </form>
+    </div>
   );
-}
+};
+
+export default SignIn;
