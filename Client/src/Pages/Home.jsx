@@ -1,59 +1,67 @@
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { api } from "./api";
 
-const DEMO_PRODUCTS = [
+const C = {
+  bg: "#07090f",
+  panel: "#0d111b",
+  blue: "#4c8dff",
+  cyan: "#57e7ff",
+  muted: "#8c96aa",
+};
+
+const demoProducts = [
   {
     _id: "demo-1",
     name: "AERO X15",
-    brand: "AERO",
+    brand: "NOVA",
     category: "Gaming",
     price: 289999,
-    description: "High-performance gaming built for your next level.",
+    oldPrice: 319999,
     image:
       "https://images.unsplash.com/photo-1593642632823-8f785ba67e45?auto=format&fit=crop&w=1000&q=85",
-    specs: { cpu: "Intel Core i7", ram: "16GB RAM", storage: "1TB SSD", gpu: "RTX 4060" },
-    stock: 8,
+    specs: { cpu: "Intel Core i7", ram: "16GB DDR5", storage: "1TB SSD", gpu: "RTX 4060" },
+    description: "Built for high-FPS gaming and serious multitasking.",
     badge: "BEST SELLER",
   },
   {
     _id: "demo-2",
     name: "MACBOOK PRO 14",
-    brand: "Apple",
-    category: "Business",
+    brand: "APPLE",
+    category: "Premium",
     price: 499999,
-    description: "Powerful performance for demanding creative workflows.",
+    oldPrice: null,
     image:
       "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=1000&q=85",
-    specs: { cpu: "Apple Silicon", ram: "16GB RAM", storage: "512GB SSD", gpu: "Integrated" },
-    stock: 5,
-    badge: "PREMIUM",
+    specs: { cpu: "Apple Silicon", ram: "16GB", storage: "512GB SSD", gpu: "Integrated" },
+    description: "A powerful creative workstation with a premium finish.",
+    badge: "CREATOR PICK",
   },
   {
     _id: "demo-3",
     name: "THINKPRO 14",
-    brand: "ThinkPro",
+    brand: "THINKPRO",
     category: "Business",
     price: 179999,
-    description: "A reliable productivity machine for work and study.",
+    oldPrice: 199999,
     image:
       "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=1000&q=85",
-    specs: { cpu: "Intel Core i5", ram: "16GB RAM", storage: "512GB SSD", gpu: "Integrated" },
-    stock: 12,
-    badge: "SMART CHOICE",
+    specs: { cpu: "Intel Core i5", ram: "16GB", storage: "512GB SSD", gpu: "Integrated" },
+    description: "Reliable performance for work, meetings and productivity.",
+    badge: "WORK READY",
   },
   {
     _id: "demo-4",
     name: "ULTRABOOK AIR 15",
-    brand: "UltraBook",
+    brand: "ZENITH",
     category: "Student",
     price: 139999,
-    description: "Lightweight portability for everyday adventures.",
+    oldPrice: null,
     image:
-      "https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?auto=format&fit=crop&w=1000&q=85",
-    specs: { cpu: "Intel Core i5", ram: "8GB RAM", storage: "512GB SSD", gpu: "Integrated" },
-    stock: 15,
+      "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=1000&q=85",
+    specs: { cpu: "Intel Core i5", ram: "8GB", storage: "512GB SSD", gpu: "Integrated" },
+    description: "Lightweight portability for classes and everyday projects.",
     badge: "LIGHTWEIGHT",
   },
   {
@@ -62,29 +70,35 @@ const DEMO_PRODUCTS = [
     brand: "ROG",
     category: "Gaming",
     price: 429999,
-    description: "Immersive gaming with serious graphics performance.",
+    oldPrice: 459999,
     image:
       "https://images.unsplash.com/photo-1603302576837-37561b2e2302?auto=format&fit=crop&w=1000&q=85",
-    specs: { cpu: "Intel Core i7", ram: "32GB RAM", storage: "1TB SSD", gpu: "RTX Series" },
-    stock: 4,
-    badge: "HIGH PERFORMANCE",
+    specs: { cpu: "Intel Core i9", ram: "32GB DDR5", storage: "1TB SSD", gpu: "RTX 4070" },
+    description: "Performance-focused hardware for demanding games.",
+    badge: "EXTREME POWER",
   },
   {
     _id: "demo-6",
-    name: "CAMPUSBOOK 15",
-    brand: "CampusBook",
-    category: "Student",
-    price: 109999,
-    description: "Everyday performance for classes, projects, and more.",
+    name: "CREATOR STUDIO",
+    brand: "VISION",
+    category: "Premium",
+    price: 349999,
+    oldPrice: null,
     image:
-      "https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?auto=format&fit=crop&w=1000&q=85",
-    specs: { cpu: "Intel Core i3", ram: "8GB RAM", storage: "256GB SSD", gpu: "Integrated" },
-    stock: 10,
-    badge: "STUDENT PICK",
+      "https://images.unsplash.com/photo-1525547719571-a2d4ac8945e2?auto=format&fit=crop&w=1000&q=85",
+    specs: { cpu: "AMD Ryzen 7", ram: "32GB", storage: "1TB SSD", gpu: "RTX Graphics" },
+    description: "A versatile machine for editing, design and development.",
+    badge: "CREATOR SERIES",
   },
 ];
 
-const CATEGORIES = ["All", "Gaming", "Business", "Student"];
+const categories = [
+  { name: "All", subtitle: "The full collection", symbol: "✳" },
+  { name: "Gaming", subtitle: "Maximum performance", symbol: "⌘" },
+  { name: "Business", subtitle: "Built for productivity", symbol: "▤" },
+  { name: "Student", subtitle: "Ready to learn", symbol: "◈" },
+  { name: "Premium", subtitle: "The finest machines", symbol: "✦" },
+];
 
 const formatPrice = (price) =>
   new Intl.NumberFormat("en-PK", {
@@ -93,136 +107,122 @@ const formatPrice = (price) =>
     maximumFractionDigits: 0,
   }).format(Number(price) || 0);
 
-function ArrowIcon({ className = "" }) {
+function ArrowIcon({ diagonal = false }) {
   return (
     <svg
-      className={className}
-      width="18"
-      height="18"
+      width="17"
+      height="17"
       viewBox="0 0 24 24"
       fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
       aria-hidden="true"
     >
-      <path d="M5 12h14M13 6l6 6-6 6" />
+      {diagonal ? (
+        <path
+          d="M7 17 17 7M7 7h10v10"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      ) : (
+        <path
+          d="M4 12h15m-6-6 6 6-6 6"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      )}
     </svg>
   );
 }
 
-function LaptopIcon() {
-  return (
-    <svg
-      width="26"
-      height="26"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <rect x="4" y="4" width="16" height="12" rx="1.5" />
-      <path d="M2 20h20l-2-4H4l-2 4Z" />
-    </svg>
-  );
-}
-
-function ProductCard({ product }) {
-  const [imageFailed, setImageFailed] = useState(false);
+function ProductCard({ product, index }) {
+  const id = product._id || product.id;
+  const image =
+    product.image ||
+    "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=1000&q=85";
 
   const specs = product.specs || {};
-  const image = product.image || product.imageUrl;
+  const description =
+    product.description || "Discover dependable performance for your everyday work.";
 
   return (
-    <article className="group overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0b1120] transition duration-300 hover:-translate-y-1 hover:border-blue-400/30 hover:shadow-xl hover:shadow-blue-950/20">
-      <div className="relative flex h-56 items-center justify-center overflow-hidden bg-[#101827] p-5 sm:h-60">
-        {!imageFailed && image ? (
-          <img
-            src={image}
-            alt={product.name}
-            loading="lazy"
-            onError={() => setImageFailed(true)}
-            className="h-full w-full object-contain transition duration-500 group-hover:scale-105"
-          />
-        ) : (
-          <div className="flex flex-col items-center gap-3 text-blue-300">
-            <LaptopIcon />
-            <span className="text-xs text-slate-500">Laptop image unavailable</span>
-          </div>
-        )}
+    <article
+      className="lh-product group"
+      style={{ animationDelay: `${index * 70}ms` }}
+    >
+      <div className="lh-product-image">
+        <img
+          src={image}
+          alt={product.name || "Laptop"}
+          loading="lazy"
+          onError={(event) => {
+            event.currentTarget.src =
+              "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=1000&q=85";
+          }}
+        />
 
-        <div className="absolute left-3 top-3 rounded-md border border-blue-300/20 bg-[#070b14]/90 px-2.5 py-1.5 text-[9px] font-bold tracking-[0.14em] text-blue-200">
-          {product.badge || product.category || "LAPTOP"}
+        <span className="lh-product-badge">
+          {product.badge || product.category || "FEATURED"}
+        </span>
+
+        <span className="lh-image-index">
+          {String(index + 1).padStart(2, "0")}
+        </span>
+
+        <div className="lh-product-overlay">
+          <Link to={id?.startsWith("demo-") ? "/contact" : `/laptops/${id}`}>
+            Explore laptop <ArrowIcon diagonal />
+          </Link>
         </div>
-
-        {Number(product.stock) > 0 && Number(product.stock) <= 5 && (
-          <div className="absolute bottom-3 right-3 rounded-md bg-amber-400/10 px-2 py-1 text-[10px] font-semibold text-amber-300">
-            Limited stock
-          </div>
-        )}
       </div>
 
-      <div className="p-5">
-        <div className="mb-2 flex items-center justify-between gap-3">
-          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-300">
-            {product.brand || "LaptopHub"}
-          </span>
-          <span className="text-[10px] text-slate-500">
+      <div className="lh-product-info">
+        <div className="lh-product-brand">
+          {product.brand || "LAPTOPHUB"}
+        </div>
+
+        <div className="lh-product-title-row">
+          <h3>{product.name || "Performance Laptop"}</h3>
+          <span className="lh-product-category">
             {product.category || "Technology"}
           </span>
         </div>
 
-        <h3 className="text-lg font-bold tracking-tight text-white">
-          {product.name}
-        </h3>
+        <p className="lh-product-description">{description}</p>
 
-        <p className="mt-2 min-h-10 text-sm leading-5 text-slate-400">
-          {product.description || "Discover dependable performance for your everyday needs."}
-        </p>
-
-        <div className="my-4 grid grid-cols-2 gap-2">
+        <div className="lh-spec-grid">
           {[
-            ["CPU", specs.cpu],
-            ["MEMORY", specs.ram],
-            ["STORAGE", specs.storage],
-            ["GRAPHICS", specs.gpu],
-          ]
-            .filter((item) => item[1])
-            .map(([label, value]) => (
-              <div
-                key={label}
-                className="min-w-0 rounded-lg border border-white/[0.06] bg-white/[0.025] px-3 py-2"
-              >
-                <p className="text-[9px] font-bold tracking-[0.12em] text-slate-600">
-                  {label}
-                </p>
-                <p className="mt-1 truncate text-xs font-medium text-slate-300">
-                  {value}
-                </p>
-              </div>
-            ))}
+            ["CPU", specs.cpu || "High performance"],
+            ["RAM", specs.ram || "See specifications"],
+            ["SSD", specs.storage || "See specifications"],
+            ["GPU", specs.gpu || "See specifications"],
+          ].map(([label, value]) => (
+            <div className="lh-spec" key={label}>
+              <span>{label}</span>
+              <strong>{value}</strong>
+            </div>
+          ))}
         </div>
 
-        <div className="flex items-end justify-between gap-3 border-t border-white/[0.07] pt-4">
+        <div className="lh-product-bottom">
           <div>
-            <p className="text-[10px] uppercase tracking-[0.12em] text-slate-500">
-              Price
-            </p>
-            <p className="mt-1 text-lg font-extrabold text-white">
-              {formatPrice(product.price)}
-            </p>
+            <span className="lh-price-label">STARTING AT</span>
+            <div className="lh-price">{formatPrice(product.price)}</div>
+            {product.oldPrice > product.price && (
+              <div className="lh-old-price">
+                {formatPrice(product.oldPrice)}
+              </div>
+            )}
           </div>
 
           <Link
-            to={product._id?.startsWith("demo-") ? "/contact" : `/laptops/${product._id}`}
-            className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-blue-500 px-3 py-2.5 text-xs font-bold text-white transition hover:bg-blue-400"
+            className="lh-buy-link"
+            to={id?.startsWith("demo-") ? "/contact" : `/laptops/${id}`}
+            aria-label={`Explore ${product.name || "laptop"}`}
           >
-            {product._id?.startsWith("demo-") ? "Enquire" : "View details"}
-            <ArrowIcon />
+            <ArrowIcon diagonal />
           </Link>
         </div>
       </div>
@@ -231,13 +231,12 @@ function ProductCard({ product }) {
 }
 
 export default function Home() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [apiFailed, setApiFailed] = useState(false);
+  const [products, setProducts] = useState(demoProducts);
+  const [activeCategory, setActiveCategory] = useState("All");
   const [search, setSearch] = useState("");
-
-  const selectedCategory = searchParams.get("category") || "All";
+  const [loading, setLoading] = useState(true);
+  const [apiStatus, setApiStatus] = useState("loading");
+  const [sortBy, setSortBy] = useState("featured");
 
   useEffect(() => {
     let active = true;
@@ -251,14 +250,15 @@ export default function Home() {
 
         if (active && Array.isArray(list) && list.length > 0) {
           setProducts(list);
-          setApiFailed(false);
+          setApiStatus("connected");
         } else if (active) {
-          setProducts(DEMO_PRODUCTS);
+          setProducts(demoProducts);
+          setApiStatus("demo");
         }
-      } catch (error) {
+      } catch {
         if (active) {
-          setProducts(DEMO_PRODUCTS);
-          setApiFailed(true);
+          setProducts(demoProducts);
+          setApiStatus("demo");
         }
       } finally {
         if (active) setLoading(false);
@@ -272,364 +272,511 @@ export default function Home() {
     };
   }, []);
 
-  const filteredProducts = useMemo(() => {
+  const visibleProducts = useMemo(() => {
+    let result = [...products];
+
+    if (activeCategory !== "All") {
+      result = result.filter(
+        (product) =>
+          String(product.category || "").toLowerCase() ===
+          activeCategory.toLowerCase()
+      );
+    }
+
     const query = search.trim().toLowerCase();
 
-    return products.filter((product) => {
-      const matchesCategory =
-        selectedCategory === "All" ||
-        String(product.category || "").toLowerCase() ===
-          selectedCategory.toLowerCase();
-
-      const matchesSearch = [
-        product.name,
-        product.brand,
-        product.category,
-        product.description,
-        product.specs?.cpu,
-        product.specs?.gpu,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-        .includes(query);
-
-      return matchesCategory && matchesSearch;
-    });
-  }, [products, selectedCategory, search]);
-
-  const changeCategory = (category) => {
-    if (category === "All") {
-      setSearchParams({});
-    } else {
-      setSearchParams({ category });
+    if (query) {
+      result = result.filter((product) =>
+        [
+          product.name,
+          product.brand,
+          product.category,
+          product.description,
+          product.specs?.cpu,
+          product.specs?.gpu,
+        ]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(query))
+      );
     }
-  };
 
-  const featuredProducts = filteredProducts.slice(0, 6);
+    if (sortBy === "price-low") {
+      result.sort((a, b) => Number(a.price) - Number(b.price));
+    }
+
+    if (sortBy === "price-high") {
+      result.sort((a, b) => Number(b.price) - Number(a.price));
+    }
+
+    return result;
+  }, [products, activeCategory, search, sortBy]);
+
+  const gamingCount = products.filter(
+    (product) => product.category?.toLowerCase() === "gaming"
+  ).length;
 
   return (
-    <main className="min-h-screen overflow-hidden bg-[#070b14] text-white">
-      {/* Hero */}
-      <section className="relative isolate border-b border-white/[0.06]">
-        <div
-          className="pointer-events-none absolute inset-0 -z-10"
-          style={{
-            background:
-              "radial-gradient(ellipse at 72% 35%, rgba(37,99,235,0.17), transparent 42%), radial-gradient(ellipse at 15% 85%, rgba(14,165,233,0.08), transparent 35%)",
-          }}
-        />
-        <div
-          className="pointer-events-none absolute inset-0 -z-10 opacity-[0.12]"
-          style={{
-            backgroundImage:
-              "linear-gradient(rgba(148,163,184,0.13) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.13) 1px, transparent 1px)",
-            backgroundSize: "52px 52px",
-            maskImage: "linear-gradient(to bottom, black, transparent 90%)",
-          }}
-        />
+    <main className="lh-home">
+      <style>{`
+        .lh-home {
+          --lh-bg: ${C.bg};
+          --lh-panel: ${C.panel};
+          --lh-blue: ${C.blue};
+          --lh-cyan: ${C.cyan};
+          --lh-muted: ${C.muted};
+          min-height: 100vh;
+          background: var(--lh-bg);
+          color: #f5f7ff;
+          overflow: hidden;
+          font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+        .lh-home * { box-sizing: border-box; }
+        .lh-home a { color: inherit; text-decoration: none; }
+        .lh-container { width: min(1240px, calc(100% - 48px)); margin: 0 auto; }
+        .lh-eyebrow { display: flex; align-items: center; gap: 10px; color: var(--lh-cyan); font-size: 10px; font-weight: 800; letter-spacing: .24em; text-transform: uppercase; }
+        .lh-eyebrow:before { content: ""; width: 25px; height: 1px; background: var(--lh-cyan); }
+        .lh-hero { position: relative; isolation: isolate; min-height: 690px; display: flex; align-items: center; padding: 76px 0 100px; }
+        .lh-hero:before { content: ""; position: absolute; inset: 0; z-index: -2; background: radial-gradient(ellipse at 75% 45%, rgba(39,105,255,.19), transparent 42%), radial-gradient(ellipse at 10% 80%, rgba(30,80,170,.09), transparent 36%); }
+        .lh-grid-bg { position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: .22; background-image: linear-gradient(rgba(135,164,220,.07) 1px, transparent 1px), linear-gradient(90deg, rgba(135,164,220,.07) 1px, transparent 1px); background-size: 55px 55px; mask-image: linear-gradient(to bottom, black, transparent 95%); }
+        .lh-hero-layout { display: grid; grid-template-columns: 1.03fr .97fr; align-items: center; gap: 30px; }
+        .lh-hero-copy { position: relative; z-index: 2; animation: lh-rise .7s ease both; }
+        .lh-hero h1 { max-width: 730px; margin: 24px 0 25px; font-size: clamp(54px, 7.2vw, 100px); line-height: .88; letter-spacing: -.085em; font-weight: 950; }
+        .lh-hero h1 span { display: block; }
+        .lh-hero h1 .lh-outline { color: transparent; -webkit-text-stroke: 1px rgba(220,232,255,.78); }
+        .lh-hero h1 .lh-blue { color: var(--lh-blue); text-shadow: 0 0 50px rgba(76,141,255,.18); }
+        .lh-hero-description { max-width: 470px; color: #a2acc0; font-size: 15px; line-height: 1.9; }
+        .lh-hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+        .lh-btn { display: inline-flex; align-items: center; justify-content: center; gap: 13px; min-height: 50px; padding: 0 20px; border: 1px solid #29364d; background: rgba(15,21,34,.8); color: white; font-size: 12px; font-weight: 800; transition: .25s ease; }
+        .lh-btn-primary { background: var(--lh-blue); border-color: var(--lh-blue); color: white; }
+        .lh-btn:hover { transform: translateY(-3px); border-color: var(--lh-cyan); }
+        .lh-btn-primary:hover { background: #3779f5; box-shadow: 0 10px 35px rgba(76,141,255,.2); }
+        .lh-trust-row { display: flex; align-items: center; flex-wrap: wrap; gap: 22px; margin-top: 34px; color: #a2acc0; font-size: 10px; letter-spacing: .05em; }
+        .lh-trust-row span { display: inline-flex; align-items: center; gap: 8px; }
+        .lh-check { display: inline-grid; place-items: center; width: 17px; height: 17px; border: 1px solid #335f90; border-radius: 50%; color: var(--lh-cyan); font-size: 10px; }
+        .lh-hero-visual { min-width: 0; position: relative; animation: lh-rise .9s ease both; }
+        .lh-hero-image-frame { position: relative; padding: 15px; border: 1px solid rgba(115,152,218,.25); background: linear-gradient(140deg, rgba(31,46,75,.7), rgba(10,13,22,.45)); transform: rotate(1.5deg); }
+        .lh-hero-image-frame:before { content: ""; position: absolute; inset: 8px; border: 1px solid rgba(255,255,255,.05); pointer-events: none; z-index: 1; }
+        .lh-hero-image { display: block; width: 100%; aspect-ratio: 1.06 / 1; object-fit: cover; filter: saturate(.84) contrast(1.06); }
+        .lh-visual-label { position: absolute; left: -17px; bottom: 42px; z-index: 2; padding: 17px 20px; background: #0b101c; border: 1px solid #2c4365; box-shadow: 0 20px 55px rgba(0,0,0,.35); }
+        .lh-visual-label small { display: block; color: var(--lh-cyan); font-size: 9px; letter-spacing: .2em; font-weight: 800; }
+        .lh-visual-label strong { display: block; margin-top: 7px; font-size: 17px; letter-spacing: -.04em; }
+        .lh-visual-number { position: absolute; top: 26px; right: -16px; z-index: 2; background: var(--lh-blue); padding: 13px 16px; color: white; font-size: 10px; font-weight: 900; letter-spacing: .12em; }
+        .lh-orbit { position: absolute; z-index: -1; width: 220px; height: 220px; right: -60px; top: -65px; border: 1px solid rgba(87,231,255,.16); border-radius: 50%; box-shadow: 0 0 0 25px rgba(87,231,255,.025), 0 0 0 55px rgba(87,231,255,.018); }
+        .lh-ticker { border-top: 1px solid #1b2435; border-bottom: 1px solid #1b2435; background: #0b0f18; }
+        .lh-ticker-inner { display: flex; align-items: center; justify-content: space-between; gap: 18px; min-height: 70px; flex-wrap: wrap; }
+        .lh-ticker strong { font-size: 11px; letter-spacing: .13em; text-transform: uppercase; }
+        .lh-ticker span { color: #758198; font-size: 10px; letter-spacing: .15em; text-transform: uppercase; }
+        .lh-section { padding: 100px 0; }
+        .lh-section-header { display: flex; align-items: end; justify-content: space-between; gap: 25px; margin-bottom: 36px; }
+        .lh-section-title { margin: 13px 0 0; font-size: clamp(32px, 4.4vw, 53px); line-height: .98; letter-spacing: -.065em; font-weight: 900; }
+        .lh-section-title span { color: var(--lh-blue); }
+        .lh-section-copy { max-width: 360px; color: #8994aa; font-size: 13px; line-height: 1.8; }
+        .lh-category-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+        .lh-category { min-height: 150px; padding: 20px; text-align: left; background: linear-gradient(145deg, #101726, #0b0e16); border: 1px solid #202b3f; color: white; cursor: pointer; transition: .25s ease; }
+        .lh-category:hover, .lh-category.active { border-color: var(--lh-blue); background: linear-gradient(145deg, rgba(35,70,130,.35), #0c111d); transform: translateY(-4px); }
+        .lh-category-symbol { display: grid; place-items: center; width: 35px; height: 35px; margin-bottom: 22px; color: var(--lh-cyan); border: 1px solid #2d4568; background: #101c30; font-size: 17px; }
+        .lh-category strong { display: block; font-size: 14px; }
+        .lh-category small { display: block; margin-top: 6px; color: #7f8ba2; font-size: 10px; }
+        .lh-catalog { padding-top: 20px; }
+        .lh-catalog-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 28px; }
+        .lh-search-wrap { display: flex; flex: 1; min-width: 220px; align-items: center; gap: 10px; padding: 0 15px; min-height: 48px; border: 1px solid #253047; background: #0c101a; color: #9ba7bd; }
+        .lh-search-wrap input { width: 100%; outline: none; border: 0; background: transparent; color: white; font-size: 12px; }
+        .lh-search-wrap input::placeholder { color: #6e7b91; }
+        .lh-select { min-height: 48px; padding: 0 15px; color: #c7d0df; background: #0c101a; border: 1px solid #253047; outline: none; font-size: 11px; }
+        .lh-product-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+        .lh-product { min-width: 0; border: 1px solid #202a3b; background: linear-gradient(160deg, #101521, #0a0d14); animation: lh-rise .45s ease both; transition: border-color .25s ease, transform .25s ease; }
+        .lh-product:hover { transform: translateY(-5px); border-color: #3d6399; }
+        .lh-product-image { position: relative; overflow: hidden; background: #101522; }
+        .lh-product-image:after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(5,7,12,.05), transparent 45%, rgba(5,7,12,.5)); pointer-events: none; }
+        .lh-product-image img { display: block; width: 100%; aspect-ratio: 1.32 / 1; object-fit: cover; transition: transform .6s cubic-bezier(.2,.7,.2,1); }
+        .lh-product:hover .lh-product-image img { transform: scale(1.06); }
+        .lh-product-badge, .lh-image-index { position: absolute; z-index: 2; top: 13px; padding: 7px 9px; font-size: 8px; font-weight: 900; letter-spacing: .12em; }
+        .lh-product-badge { left: 13px; color: #d9e8ff; background: rgba(8,13,23,.88); border: 1px solid #2b3e5a; }
+        .lh-image-index { right: 13px; color: white; background: var(--lh-blue); }
+        .lh-product-overlay { position: absolute; z-index: 3; inset: auto 0 0; padding: 13px; opacity: 0; transform: translateY(8px); transition: .25s ease; }
+        .lh-product-overlay a { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: rgba(7,10,17,.94); border: 1px solid #304d78; font-size: 11px; font-weight: 800; }
+        .lh-product:hover .lh-product-overlay { opacity: 1; transform: translateY(0); }
+        .lh-product-info { padding: 21px; }
+        .lh-product-brand { color: var(--lh-cyan); font-size: 9px; font-weight: 900; letter-spacing: .2em; }
+        .lh-product-title-row { display: flex; align-items: start; justify-content: space-between; gap: 12px; margin-top: 9px; }
+        .lh-product-title-row h3 { margin: 0; font-size: 19px; letter-spacing: -.045em; font-weight: 850; }
+        .lh-product-category { color: #8793a9; font-size: 9px; text-align: right; }
+        .lh-product-description { min-height: 37px; margin: 11px 0 18px; color: #8994a9; font-size: 11px; line-height: 1.7; }
+        .lh-spec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+        .lh-spec { padding: 10px; min-width: 0; background: #0b0f18; border: 1px solid #1b2537; }
+        .lh-spec span { display: block; color: #738097; font-size: 8px; font-weight: 900; letter-spacing: .13em; }
+        .lh-spec strong { display: block; margin-top: 6px; overflow-wrap: anywhere; color: #dfe7f5; font-size: 10px; font-weight: 700; }
+        .lh-product-bottom { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding-top: 18px; margin-top: 18px; border-top: 1px solid #202a3a; }
+        .lh-price-label { color: #748198; font-size: 8px; font-weight: 900; letter-spacing: .14em; }
+        .lh-price { margin-top: 4px; font-size: 18px; font-weight: 900; letter-spacing: -.04em; }
+        .lh-old-price { margin-top: 3px; color: #7d8798; font-size: 10px; text-decoration: line-through; }
+        .lh-buy-link { display: grid; place-items: center; width: 42px; height: 42px; border: 1px solid #344c70; background: #101c30; color: var(--lh-cyan); transition: .2s; }
+        .lh-buy-link:hover { color: white; background: var(--lh-blue); border-color: var(--lh-blue); }
+        .lh-empty { padding: 60px 20px; text-align: center; border: 1px dashed #28364b; color: #a2acc0; }
+        .lh-empty strong { display: block; margin-bottom: 8px; color: white; font-size: 20px; }
+        .lh-loading { color: #93a0b7; padding: 24px 0; font-size: 12px; }
+        .lh-show-more { display: flex; justify-content: center; margin-top: 35px; }
+        .lh-feature { position: relative; overflow: hidden; border: 1px solid #253750; background: radial-gradient(ellipse at 100% 0%, rgba(53,114,225,.23), transparent 44%), linear-gradient(120deg, #101827, #090d15); }
+        .lh-feature-layout { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 30px; padding: 65px; }
+        .lh-feature h2 { margin: 18px 0; font-size: clamp(35px, 4.8vw, 61px); line-height: .94; letter-spacing: -.075em; font-weight: 950; }
+        .lh-feature h2 span { color: var(--lh-cyan); }
+        .lh-feature p { max-width: 420px; color: #9aa6ba; font-size: 13px; line-height: 1.9; }
+        .lh-feature-visual { position: relative; }
+        .lh-feature-visual img { display: block; width: 100%; aspect-ratio: 1.35 / 1; object-fit: cover; border: 1px solid #344866; }
+        .lh-feature-tag { position: absolute; right: -12px; bottom: -13px; padding: 13px 17px; background: var(--lh-blue); color: white; font-size: 10px; font-weight: 900; letter-spacing: .13em; }
+        .lh-benefits { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid #202a3b; border-bottom: 1px solid #202a3b; }
+        .lh-benefit { padding: 26px 22px; border-right: 1px solid #202a3b; }
+        .lh-benefit:last-child { border-right: 0; }
+        .lh-benefit-symbol { color: var(--lh-cyan); font-size: 20px; }
+        .lh-benefit strong { display: block; margin-top: 14px; font-size: 12px; }
+        .lh-benefit p { margin: 7px 0 0; color: #7f8ba1; font-size: 10px; line-height: 1.7; }
+        .lh-final-cta { position: relative; padding: 90px 25px; text-align: center; border-top: 1px solid #1b2536; background: radial-gradient(ellipse at 50% 100%, rgba(54,109,223,.16), transparent 65%); }
+        .lh-final-cta h2 { max-width: 780px; margin: 17px auto; font-size: clamp(38px, 6.5vw, 78px); line-height: .94; letter-spacing: -.075em; font-weight: 950; }
+        .lh-final-cta h2 span { color: var(--lh-blue); }
+        .lh-final-cta p { max-width: 480px; margin: 0 auto; color: #919db2; font-size: 13px; line-height: 1.9; }
+        .lh-final-cta .lh-hero-actions { justify-content: center; }
+        .lh-status { margin-top: 15px; color: #687790; font-size: 10px; }
+        @keyframes lh-rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+        @media (prefers-reduced-motion: reduce) { .lh-home *, .lh-home *:before, .lh-home *:after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }
+        @media (max-width: 1000px) {
+          .lh-hero { min-height: auto; padding: 70px 0 85px; }
+          .lh-hero-layout { grid-template-columns: 1fr 1fr; gap: 22px; }
+          .lh-hero h1 { font-size: clamp(52px, 8vw, 78px); }
+          .lh-category-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+          .lh-product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+          .lh-feature-layout { padding: 35px; }
+        }
+        @media (max-width: 680px) {
+          .lh-container { width: calc(100% - 30px); }
+          .lh-hero { padding: 55px 0 65px; }
+          .lh-hero-layout { grid-template-columns: 1fr; gap: 40px; }
+          .lh-hero h1 { font-size: clamp(58px, 15vw, 86px); }
+          .lh-hero-description { font-size: 13px; }
+          .lh-hero-visual { margin: 0 10px; }
+          .lh-visual-label { left: -8px; bottom: 25px; }
+          .lh-visual-number { right: -8px; }
+          .lh-ticker-inner { justify-content: center; padding: 18px 0; }
+          .lh-ticker-inner span { font-size: 9px; }
+          .lh-section { padding: 65px 0; }
+          .lh-section-header { display: block; }
+          .lh-section-copy { margin-top: 17px; }
+          .lh-category-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+          .lh-category { min-height: 130px; padding: 15px; }
+          .lh-product-grid { grid-template-columns: 1fr; }
+          .lh-product-image img { aspect-ratio: 1.5 / 1; }
+          .lh-product-overlay { opacity: 1; transform: none; }
+          .lh-feature-layout { grid-template-columns: 1fr; padding: 25px 20px; }
+          .lh-benefits { grid-template-columns: 1fr 1fr; }
+          .lh-benefit:nth-child(2) { border-right: 0; }
+          .lh-benefit:nth-child(-n+2) { border-bottom: 1px solid #202a3b; }
+          .lh-final-cta { padding: 70px 18px; }
+        }
+      `}</style>
 
-        <div className="mx-auto grid max-w-[1440px] items-center gap-12 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-[1.05fr_0.95fr] lg:px-8 lg:py-24">
-          <div className="relative z-10">
-            <div className="inline-flex items-center gap-2 rounded-full border border-blue-400/20 bg-blue-500/[0.07] px-3 py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-blue-200 sm:text-xs">
-              <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
-              Your technology destination
-            </div>
+      {/* HERO */}
+      <section className="lh-hero">
+        <div className="lh-grid-bg" />
 
-            <h1 className="mt-7 max-w-3xl text-5xl font-black leading-[0.98] tracking-[-0.055em] sm:text-6xl lg:text-7xl xl:text-[88px]">
-              POWER YOUR
-              <span className="mt-2 block text-blue-400">NEXT MOVE.</span>
+        <div className="lh-container lh-hero-layout">
+          <div className="lh-hero-copy">
+            <div className="lh-eyebrow">The next level of computing</div>
+
+            <h1>
+              <span>POWER</span>
+              <span className="lh-outline">YOUR</span>
+              <span className="lh-blue">FUTURE.</span>
             </h1>
 
-            <p className="mt-7 max-w-xl text-sm leading-7 text-slate-400 sm:text-base sm:leading-8">
-              Discover gaming machines, productivity powerhouses, and everyday
-              laptops. Find the technology that matches your ambitions.
+            <p className="lh-hero-description">
+              Not just another laptop store. Discover performance machines
+              engineered for gaming, ambitious work, creativity and everything
+              you want to build next.
             </p>
 
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <a
-                href="#featured"
-                className="group inline-flex min-h-12 items-center justify-center gap-3 rounded-xl bg-blue-500 px-6 py-3 text-sm font-bold text-white transition hover:bg-blue-400"
-              >
-                Explore laptops
-                <ArrowIcon className="transition-transform group-hover:translate-x-1" />
+            <div className="lh-hero-actions">
+              <a href="#collection" className="lh-btn lh-btn-primary">
+                EXPLORE COLLECTION <ArrowIcon />
               </a>
-
-              <Link
-                to="/about"
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.025] px-6 py-3 text-sm font-semibold text-slate-200 transition hover:border-blue-400/30 hover:bg-white/[0.05]"
-              >
-                Discover LaptopHub
+              <Link to="/about" className="lh-btn">
+                OUR STORY <ArrowIcon diagonal />
               </Link>
             </div>
 
-            <div className="mt-10 grid max-w-lg grid-cols-3 gap-4 border-t border-white/[0.08] pt-6">
-              {[
-                ["01", "Gaming"],
-                ["02", "Business"],
-                ["03", "Student"],
-              ].map(([number, label]) => (
-                <div key={label}>
-                  <p className="text-xs font-bold text-blue-300">{number}</p>
-                  <p className="mt-2 text-sm font-semibold text-slate-300">
-                    {label}
-                  </p>
-                </div>
+            <div className="lh-trust-row">
+              <span><i className="lh-check">✓</i> Performance-focused picks</span>
+              <span><i className="lh-check">✓</i> Support when you need it</span>
+            </div>
+          </div>
+
+          <div className="lh-hero-visual">
+            <div className="lh-orbit" />
+            <div className="lh-hero-image-frame">
+              <img
+                className="lh-hero-image"
+                src="https://images.unsplash.com/photo-1603302576837-37561b2e2302?auto=format&fit=crop&w=1300&q=90"
+                alt="Gaming laptop in a dark modern setup"
+              />
+            </div>
+
+            <div className="lh-visual-number">LH / 001</div>
+
+            <div className="lh-visual-label">
+              <small>PERFORMANCE WITHOUT LIMITS</small>
+              <strong>Find your machine.</strong>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* BRAND STRIP */}
+      <div className="lh-ticker">
+        <div className="lh-container lh-ticker-inner">
+          <strong>ENGINEERED FOR YOUR NEXT MOVE</strong>
+          <span>Gaming</span>
+          <span>Creation</span>
+          <span>Business</span>
+          <span>Everyday performance</span>
+        </div>
+      </div>
+
+      {/* CATEGORIES */}
+      <section className="lh-section">
+        <div className="lh-container">
+          <div className="lh-section-header">
+            <div>
+              <div className="lh-eyebrow">Choose your mission</div>
+              <h2 className="lh-section-title">
+                YOUR WORLD. <span>YOUR MACHINE.</span>
+              </h2>
+            </div>
+            <p className="lh-section-copy">
+              Different goals demand different hardware. Start with what you
+              want to do, then find the laptop that fits.
+            </p>
+          </div>
+
+          <div className="lh-category-grid">
+            {categories.map((category) => (
+              <button
+                key={category.name}
+                className={`lh-category ${
+                  activeCategory === category.name ? "active" : ""
+                }`}
+                onClick={() => {
+                  setActiveCategory(category.name);
+                  document.getElementById("collection")?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                  });
+                }}
+                aria-pressed={activeCategory === category.name}
+              >
+                <span className="lh-category-symbol">{category.symbol}</span>
+                <strong>{category.name}</strong>
+                <small>{category.subtitle}</small>
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* PRODUCT COLLECTION */}
+      <section className="lh-section lh-catalog" id="collection">
+        <div className="lh-container">
+          <div className="lh-section-header">
+            <div>
+              <div className="lh-eyebrow">The LaptopHub selection</div>
+              <h2 className="lh-section-title">
+                BUILT TO <span>PERFORM.</span>
+              </h2>
+            </div>
+            <p className="lh-section-copy">
+              Explore machines for your next game, your next project or your
+              next big idea.
+            </p>
+          </div>
+
+          <div className="lh-catalog-controls">
+            <label className="lh-search-wrap">
+              <span aria-hidden="true">⌕</span>
+              <input
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search laptops, brands, GPU..."
+                aria-label="Search laptops"
+              />
+            </label>
+
+            <select
+              className="lh-select"
+              value={sortBy}
+              onChange={(event) => setSortBy(event.target.value)}
+              aria-label="Sort laptops"
+            >
+              <option value="featured">Featured selection</option>
+              <option value="price-low">Price: low to high</option>
+              <option value="price-high">Price: high to low</option>
+            </select>
+          </div>
+
+          {loading && <div className="lh-loading">Loading collection...</div>}
+
+          {!loading && visibleProducts.length > 0 && (
+            <div className="lh-product-grid">
+              {visibleProducts.map((product, index) => (
+                <ProductCard
+                  key={product._id || product.id || product.name}
+                  product={product}
+                  index={index}
+                />
               ))}
             </div>
-          </div>
+          )}
 
-          {/* Hero visual */}
-          <div className="relative mx-auto w-full max-w-xl">
-            <div className="absolute inset-8 rounded-full bg-blue-500/10 blur-3xl" />
-            <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-[#0c1424] p-3 shadow-2xl shadow-blue-950/20">
-              <div className="flex items-center justify-between border-b border-white/[0.07] px-3 py-3">
-                <div className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-blue-400" />
-                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
-                    Performance series
-                  </span>
-                </div>
-                <span className="text-[10px] text-slate-600">LH / 001</span>
-              </div>
-
-              <div className="relative flex min-h-[270px] items-center justify-center overflow-hidden sm:min-h-[350px]">
-                <div className="absolute h-52 w-52 rounded-full border border-blue-400/10 sm:h-72 sm:w-72" />
-                <div className="absolute h-40 w-40 rounded-full border border-blue-400/[0.08] sm:h-56 sm:w-56" />
-
-                <img
-                  src="https://images.unsplash.com/photo-1593642632823-8f785ba67e45?auto=format&fit=crop&w=1200&q=90"
-                  alt="Laptop showcasing modern computer design"
-                  className="relative z-10 max-h-[300px] w-full object-contain drop-shadow-2xl sm:max-h-[390px]"
-                />
-
-                <div className="absolute bottom-4 left-3 rounded-xl border border-white/10 bg-[#070b14]/90 px-3 py-2.5 backdrop-blur sm:bottom-6 sm:left-5">
-                  <p className="text-[9px] uppercase tracking-[0.16em] text-slate-500">
-                    Designed for
-                  </p>
-                  <p className="mt-1 text-xs font-bold text-white">
-                    Performance
-                  </p>
-                </div>
-
-                <div className="absolute right-3 top-4 rounded-xl border border-blue-400/20 bg-blue-500/[0.08] px-3 py-2.5 sm:right-5 sm:top-6">
-                  <p className="text-[9px] uppercase tracking-[0.16em] text-blue-300">
-                    Discover
-                  </p>
-                  <p className="mt-1 text-xs font-bold text-white">
-                    Your next laptop
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2 border-t border-white/[0.07] p-3">
-                {[
-                  ["01", "Performance"],
-                  ["02", "Productivity"],
-                  ["03", "Portability"],
-                ].map(([number, label]) => (
-                  <div
-                    key={number}
-                    className="rounded-lg bg-white/[0.025] px-2 py-3 text-center"
-                  >
-                    <p className="text-[9px] font-bold text-blue-300">{number}</p>
-                    <p className="mt-1 text-[10px] font-semibold text-slate-300 sm:text-xs">
-                      {label}
-                    </p>
-                  </div>
-                ))}
+          {!loading && visibleProducts.length === 0 && (
+            <div className="lh-empty">
+              <strong>No matching machines found.</strong>
+              Try another search or select a different category.
+              <div className="lh-hero-actions" style={{ justifyContent: "center" }}>
+                <button
+                  className="lh-btn"
+                  onClick={() => {
+                    setSearch("");
+                    setActiveCategory("All");
+                  }}
+                >
+                  RESET FILTERS <ArrowIcon />
+                </button>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
+          )}
 
-      {/* Trust / features */}
-      <section className="border-b border-white/[0.06] bg-[#090e19]">
-        <div className="mx-auto grid max-w-[1440px] grid-cols-1 gap-px px-4 sm:grid-cols-3 sm:px-6 lg:px-8">
-          {[
-            ["01", "Performance first", "Explore laptops for your workload."],
-            ["02", "Choices that fit", "Compare options for different needs."],
-            ["03", "Support when needed", "Contact us for product assistance."],
-          ].map(([number, title, description]) => (
-            <div
-              key={number}
-              className="flex items-start gap-4 border-b border-white/[0.05] py-5 sm:border-b-0 sm:px-5 sm:py-7"
-            >
-              <span className="pt-0.5 text-xs font-bold text-blue-300">
-                {number}
-              </span>
-              <div>
-                <h2 className="text-sm font-bold text-white">{title}</h2>
-                <p className="mt-1.5 text-xs leading-5 text-slate-500">
-                  {description}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Product collection */}
-      <section id="featured" className="mx-auto max-w-[1440px] px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
-        <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-blue-300 sm:text-xs">
-              The LaptopHub collection
-            </p>
-            <h2 className="mt-3 text-3xl font-black tracking-tight text-white sm:text-4xl">
-              Find your next machine<span className="text-blue-400">.</span>
-            </h2>
-            <p className="mt-3 max-w-xl text-sm leading-6 text-slate-400">
-              Explore options for gaming, work, and everyday productivity.
-            </p>
-          </div>
-
-          <Link
-            to="/contact"
-            className="inline-flex items-center gap-2 self-start text-sm font-semibold text-blue-300 transition hover:text-blue-200 md:self-auto"
-          >
-            Need help choosing?
-            <ArrowIcon />
-          </Link>
-        </div>
-
-        {/* Category filters */}
-        <div className="mt-8 flex flex-wrap gap-2">
-          {CATEGORIES.map((category) => {
-            const active = selectedCategory === category;
-
-            return (
-              <button
-                key={category}
-                type="button"
-                onClick={() => changeCategory(category)}
-                className={`rounded-xl border px-4 py-2.5 text-xs font-bold transition ${
-                  active
-                    ? "border-blue-400/30 bg-blue-500 text-white"
-                    : "border-white/[0.08] bg-white/[0.025] text-slate-400 hover:border-blue-400/25 hover:text-white"
-                }`}
-              >
-                {category}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Search products */}
-        <div className="mt-5 flex max-w-md items-center gap-3 rounded-xl border border-white/[0.08] bg-[#0b1120] px-4">
-          <svg
-            width="19"
-            height="19"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.7"
-            aria-hidden="true"
-            className="shrink-0 text-slate-500"
-          >
-            <circle cx="11" cy="11" r="7" />
-            <path d="m20 20-4-4" />
-          </svg>
-          <input
-            type="search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search laptops, brands, specs..."
-            aria-label="Search laptops"
-            className="h-12 min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-slate-600"
-          />
-        </div>
-
-        {apiFailed && (
-          <p className="mt-4 rounded-xl border border-amber-300/10 bg-amber-300/[0.04] px-4 py-3 text-xs leading-5 text-amber-200/80">
-            Showing sample products because the live API could not be reached.
-            Check that your backend is running to load database products.
-          </p>
-        )}
-
-        {loading ? (
-          <div className="grid grid-cols-1 gap-5 pt-8 sm:grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3].map((item) => (
-              <div
-                key={item}
-                className="h-[430px] animate-pulse rounded-2xl border border-white/[0.06] bg-white/[0.025]"
-              />
-            ))}
-          </div>
-        ) : featuredProducts.length ? (
-          <div className="grid grid-cols-1 gap-5 pt-8 sm:grid-cols-2 lg:grid-cols-3">
-            {featuredProducts.map((product) => (
-              <ProductCard key={product._id || product.name} product={product} />
-            ))}
-          </div>
-        ) : (
-          <div className="mt-8 rounded-2xl border border-white/[0.08] bg-[#0b1120] px-5 py-14 text-center">
-            <LaptopIcon />
-            <h3 className="mt-4 text-lg font-bold text-white">
-              No laptops found
-            </h3>
-            <p className="mt-2 text-sm text-slate-500">
-              Try a different category or search term.
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                setSearch("");
-                changeCategory("All");
-              }}
-              className="mt-5 rounded-xl bg-blue-500 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-400"
-            >
-              Show all laptops
-            </button>
-          </div>
-        )}
-
-        <div className="mt-8 flex flex-col items-center justify-between gap-4 rounded-2xl border border-white/[0.08] bg-[#0b1120] p-5 sm:flex-row sm:p-6">
-          <div>
-            <p className="text-sm font-bold text-white">
-              Looking for something specific?
-            </p>
-            <p className="mt-1 text-xs leading-5 text-slate-500">
-              Contact our team for help finding the right laptop.
-            </p>
-          </div>
-          <Link
-            to="/contact"
-            className="inline-flex items-center gap-2 rounded-xl border border-blue-400/20 bg-blue-500/[0.08] px-5 py-3 text-sm font-bold text-blue-200 transition hover:bg-blue-500/[0.15]"
-          >
-            Contact us <ArrowIcon />
-          </Link>
-        </div>
-      </section>
-
-      {/* Final CTA */}
-      <section className="px-4 pb-16 sm:px-6 sm:pb-20 lg:px-8">
-        <div className="relative mx-auto max-w-[1376px] overflow-hidden rounded-3xl border border-blue-400/15 bg-[#0b1425] px-6 py-12 sm:px-10 sm:py-16 lg:px-16">
-          <div className="pointer-events-none absolute -right-16 -top-24 h-72 w-72 rounded-full bg-blue-500/10 blur-3xl" />
-
-          <div className="relative flex flex-col justify-between gap-8 md:flex-row md:items-center">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-blue-300 sm:text-xs">
-                Ready for your next upgrade?
-              </p>
-              <h2 className="mt-4 max-w-2xl text-3xl font-black leading-tight tracking-tight text-white sm:text-4xl">
-                Better technology.
-                <span className="block text-blue-400">Bigger possibilities.</span>
-              </h2>
-              <p className="mt-4 max-w-xl text-sm leading-6 text-slate-400">
-                Explore the collection and find a machine that fits your next move.
-              </p>
-            </div>
-
-            <Link
-              to="/laptops"
-              className="group inline-flex shrink-0 items-center justify-center gap-3 self-start rounded-xl bg-blue-500 px-6 py-3.5 text-sm font-bold text-white transition hover:bg-blue-400 md:self-auto"
-            >
-              Browse laptops
-              <ArrowIcon className="transition-transform group-hover:translate-x-1" />
+          <div className="lh-show-more">
+            <Link to="/laptops" className="lh-btn">
+              VIEW FULL COLLECTION <ArrowIcon />
             </Link>
           </div>
+
+          {!loading && apiStatus === "demo" && (
+            <p className="lh-status">
+              Preview collection shown. Connect your product API to display
+              your saved inventory.
+            </p>
+          )}
+        </div>
+      </section>
+
+      {/* FEATURE SECTION */}
+      <section className="lh-section">
+        <div className="lh-container">
+          <div className="lh-feature">
+            <div className="lh-feature-layout">
+              <div>
+                <div className="lh-eyebrow">Performance meets purpose</div>
+                <h2>
+                  YOUR SETUP.
+                  <br />
+                  YOUR <span>RULES.</span>
+                </h2>
+                <p>
+                  From competitive gaming to demanding creative work, the right
+                  machine makes more possible. Compare specifications, explore
+                  your options and choose with confidence.
+                </p>
+
+                <div className="lh-hero-actions">
+                  <Link to="/laptops" className="lh-btn lh-btn-primary">
+                    FIND YOUR LAPTOP <ArrowIcon />
+                  </Link>
+                  <Link to="/contact" className="lh-btn">
+                    TALK TO US <ArrowIcon diagonal />
+                  </Link>
+                </div>
+              </div>
+
+              <div className="lh-feature-visual">
+                <img
+                  src="https://images.unsplash.com/photo-1593642632823-8f785ba67e45?auto=format&fit=crop&w=1100&q=85"
+                  alt="Laptop ready for work and gaming"
+                  loading="lazy"
+                />
+                <span className="lh-feature-tag">UPGRADE YOUR GAME</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* BENEFITS */}
+      <section className="lh-section" style={{ paddingTop: 15 }}>
+        <div className="lh-container">
+          <div className="lh-section-header">
+            <div>
+              <div className="lh-eyebrow">The LaptopHub approach</div>
+              <h2 className="lh-section-title">
+                TECH THAT <span>MAKES SENSE.</span>
+              </h2>
+            </div>
+          </div>
+
+          <div className="lh-benefits">
+            {[
+              {
+                icon: "◈",
+                title: "CHOICE THAT MATTERS",
+                text: "Explore different categories and specifications for your needs.",
+              },
+              {
+                icon: "⌘",
+                title: "PERFORMANCE FIRST",
+                text: "Focus on the hardware and features that matter to your work.",
+              },
+              {
+                icon: "↗",
+                title: "A CLEAR EXPERIENCE",
+                text: "Find product information without unnecessary clutter.",
+              },
+              {
+                icon: "✳",
+                title: "HUMAN SUPPORT",
+                text: "Have a question? Reach out to discuss your requirements.",
+              },
+            ].map((item) => (
+              <div className="lh-benefit" key={item.title}>
+                <span className="lh-benefit-symbol">{item.icon}</span>
+                <strong>{item.title}</strong>
+                <p>{item.text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* FINAL CTA */}
+      <section className="lh-final-cta">
+        <div className="lh-eyebrow" style={{ justifyContent: "center" }}>
+          Your next move starts here
+        </div>
+
+        <h2>
+          READY FOR
+          <br />
+          <span>WHAT'S NEXT?</span>
+        </h2>
+
+        <p>
+          Explore the collection, compare your options and discover the
+          technology that fits your ambition.
+        </p>
+
+        <div className="lh-hero-actions">
+          <Link to="/laptops" className="lh-btn lh-btn-primary">
+            EXPLORE LAPTOPS <ArrowIcon />
+          </Link>
+          <Link to="/contact" className="lh-btn">
+            CONTACT LAPTOPHUB <ArrowIcon diagonal />
+          </Link>
         </div>
       </section>
     </main>
