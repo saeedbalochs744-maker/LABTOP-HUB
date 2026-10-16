@@ -1,3 +1,4 @@
+
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import Navbar from "./Components/Navbar";
@@ -18,36 +19,53 @@ import SignUp from "./Pages/SignUp";
 function App() {
   return (
     <BrowserRouter>
-      {/* ONE NAVBAR */}
       <Navbar />
-
-      {/* opens automatically for logged-out visitors */}
       <AuthPopup />
 
-      <Routes>
-        {/* public pages */}
-        <Route path="/" element={<Home />} />
-        <Route path="/laptops" element={<Home />} />
-        <Route path="/about" element={<About />} />
-        <Route path="/contact" element={<Contact />} />
-        <Route path="/gaming" element={<Gaming />} />
-        <Route path="/student" element={<Student />} />
-        <Route path="/business" element={<Business />} />
-        <Route path="/signin" element={<SignIn />} />
-        <Route path="/signup" element={<SignUp />} />
+      <main className="min-h-screen">
+        <Routes>
+          {/* Public pages */}
+          <Route path="/" element={<Home />} />
+          <Route path="/laptops" element={<Home />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/gaming" element={<Gaming />} />
+          <Route path="/student" element={<Student />} />
+          <Route path="/business" element={<Business />} />
+          <Route path="/signin" element={<SignIn />} />
+          <Route path="/signup" element={<SignUp />} />
 
-        {/* needs login */}
-        <Route
-          path="/service"
-          element={
-            <ProtectedRoute>
-              <Service />
-            </ProtectedRoute>
-          }
-        />
-      </Routes>
+          {/* Login required */}
+          <Route
+            path="/service"
+            element={
+              <ProtectedRoute>
+                <Service />
+              </ProtectedRoute>
+            }
+          />
 
-      {/* ONE FOOTER */}
+          {/* Unknown URL */}
+          <Route
+            path="*"
+            element={
+              <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 bg-slate-950 px-6 text-center text-white">
+                <h1 className="text-5xl font-black">404</h1>
+                <p className="text-slate-400">
+                  Sorry, this LaptopHub page was not found.
+                </p>
+                <a
+                  href="/"
+                  className="rounded-xl bg-blue-600 px-6 py-3 font-bold hover:bg-blue-500"
+                >
+                  Back to Home
+                </a>
+              </div>
+            }
+          />
+        </Routes>
+      </main>
+
       <Footer />
     </BrowserRouter>
   );

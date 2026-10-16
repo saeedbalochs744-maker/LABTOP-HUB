@@ -1,810 +1,316 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { useMemo, useState } from "react";
+import {
+  Laptop, Rocket, Search, ArrowRight, Heart, ShoppingCart, UserRound,
+  Menu, X, Star, ShieldCheck, Truck, Headphones, Plus, Minus, Trash2,
+  Monitor, GraduationCap, BriefcaseBusiness, Gamepad2, ArrowUpRight,
+  Mail, MapPin, Phone, Cpu, Zap, CheckCircle2
+} from "lucide-react";
 
-/* ------------------------------------------------------------------ */
-/*  Data                                                               */
-/* ------------------------------------------------------------------ */
+/*
+  LaptopHub — single-file React + Tailwind CSS demo store.
+  Install icon package: npm install lucide-react
+  Use this file as src/Components/Navbar.jsx (or src/Navbar.jsx).
+  In App.jsx render only: <Navbar /> (do not wrap it in another Routes layout).
+*/
+
+const PRODUCTS = [
+  { id: 1, name: "ASUS ROG Zephyrus G16", brand: "ASUS", category: "Gaming", price: 429999, oldPrice: 469999, rating: 4.9, badge: "BEST SELLER", specs: "Core Ultra 9 · RTX 4070 · 16GB RAM", image: "https://images.unsplash.com/photo-1593642632823-8f785ba67e45?auto=format&fit=crop&w=1000&q=85" },
+  { id: 2, name: "MacBook Air 15", brand: "Apple", category: "Student", price: 349999, oldPrice: 379999, rating: 4.8, badge: "LIGHTWEIGHT", specs: "Apple M3 · 16GB memory · 512GB SSD", image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=1000&q=85" },
+  { id: 3, name: "Dell XPS 14", brand: "Dell", category: "Business", price: 389999, oldPrice: null, rating: 4.7, badge: "PREMIUM", specs: "Core Ultra 7 · 16GB RAM · 1TB SSD", image: "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=1000&q=85" },
+  { id: 4, name: "Lenovo Legion Pro 5", brand: "Lenovo", category: "Gaming", price: 319999, oldPrice: 344999, rating: 4.8, badge: "GAMING", specs: "Ryzen 7 · RTX 4060 · 16GB RAM", image: "https://images.unsplash.com/photo-1603302576837-37561b2e2302?auto=format&fit=crop&w=1000&q=85" },
+  { id: 5, name: "HP Pavilion Plus 14", brand: "HP", category: "Student", price: 189999, oldPrice: 209999, rating: 4.6, badge: "STUDENT PICK", specs: "Core Ultra 5 · 16GB RAM · 512GB SSD", image: "https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?auto=format&fit=crop&w=1000&q=85" },
+  { id: 6, name: "Acer Swift Go 14", brand: "Acer", category: "Business", price: 219999, oldPrice: null, rating: 4.5, badge: "EVERYDAY POWER", specs: "Core Ultra 7 · 16GB RAM · 1TB SSD", image: "https://images.unsplash.com/photo-1541807084-5c52b6b3adef?auto=format&fit=crop&w=1000&q=85" },
+];
+
+const money = (n) =>
+  new Intl.NumberFormat("en-PK", { style: "currency", currency: "PKR", maximumFractionDigits: 0 })
+    .format(n).replace("PKR", "Rs.");
 
 const NAV_LINKS = [
-  { label: "Home", to: "/", end: true },
-  { label: "Laptops", to: "/laptops" },
-  { label: "About", to: "/about" },
-  { label: "Contact", to: "/contact" },
+  { label: "Home", page: "Home" },
+  { label: "Products", page: "Products" },
+  { label: "Categories", page: "Categories" },
+  { label: "About", page: "About" },
+  { label: "Contact", page: "Contact" },
 ];
 
-const CATEGORIES = [
-  {
-    name: "Gaming",
-    description: "High refresh rate screens and dedicated GPUs for competitive play.",
-    chips: ["RTX graphics", "144Hz+", "Liquid cooling"],
-    icon: "gamepad",
-  },
-  {
-    name: "Business",
-    description: "Light, secure and built to last through a full workday.",
-    chips: ["All-day battery", "Fingerprint", "Under 1.5 kg"],
-    icon: "briefcase",
-  },
-  {
-    name: "Student",
-    description: "Affordable machines for classes, coding and streaming.",
-    chips: ["Budget friendly", "Portable", "Fast SSD"],
-    icon: "book",
-  },
-  {
-    name: "Premium",
-    description: "Top-tier displays and power for creators and engineers.",
-    chips: ["OLED / mini-LED", "32GB+ RAM", "Aluminium body"],
-    icon: "bolt",
-  },
-];
-
-const BUDGETS = [
-  { label: "Under $1,000", value: "under-1000" },
-  { label: "$1,000 – $1,500", value: "1000-1500" },
-  { label: "$1,500 and up", value: "1500-plus" },
-];
-
-const PAGES = [
-  { title: "Home", subtitle: "Main page", to: "/", group: "Pages", icon: "home" },
-  { title: "All laptops", subtitle: "Browse the full collection", to: "/laptops", group: "Pages", icon: "laptop" },
-  { title: "About LaptopHub", subtitle: "Who we are", to: "/about", group: "Pages", icon: "info" },
-  { title: "Contact", subtitle: "Talk to our team", to: "/contact", group: "Pages", icon: "mail" },
-  { title: "Sign in", subtitle: "Access your account", to: "/signin", group: "Account", icon: "user" },
-  { title: "Create account", subtitle: "Join LaptopHub", to: "/signup", group: "Account", icon: "plus" },
-];
-
-const SEARCH_ITEMS = [
-  ...PAGES.filter((p) => p.group === "Pages"),
-  ...CATEGORIES.map((c) => ({
-    title: `${c.name} laptops`,
-    subtitle: c.description,
-    to: `/laptops?category=${encodeURIComponent(c.name)}`,
-    group: "Categories",
-    icon: c.icon,
-  })),
-  ...BUDGETS.map((b) => ({
-    title: `Gaming ${b.label.toLowerCase()}`,
-    subtitle: "Quick budget filter",
-    to: `/laptops?category=Gaming&budget=${b.value}`,
-    group: "Quick filters",
-    icon: "tag",
-  })),
-  ...PAGES.filter((p) => p.group === "Account"),
-];
-
-const ANNOUNCEMENTS = [
-  "Free delivery on orders over $999",
-  "2-year warranty on every gaming laptop",
-  "Need help choosing? support@laptophub.com",
-];
-
-/* ------------------------------------------------------------------ */
-/*  Icons                                                              */
-/* ------------------------------------------------------------------ */
-
-function Icon({ name, size = 18 }) {
-  const paths = {
-    search: <><circle cx="10.8" cy="10.8" r="6.8" /><path d="m16 16 4 4" /></>,
-    arrow: <><path d="M4 12h15" /><path d="m13 6 6 6-6 6" /></>,
-    diagonal: <><path d="M7 17 17 7" /><path d="M7 7h10v10" /></>,
-    chevron: <path d="m7 10 5 5 5-5" />,
-    close: <><path d="m18 6-12 12" /><path d="m6 6 12 12" /></>,
-    menu: <><path d="M4 8h16" /><path d="M4 16h16" /></>,
-    laptop: <><rect x="5" y="4" width="14" height="12" rx="1.5" /><path d="M2.5 19h19l-2-3H4.5z" /></>,
-    user: <><circle cx="12" cy="8" r="3.5" /><path d="M5 20c.5-4 3-6 7-6s6.5 2 7 6" /></>,
-    cart: <><path d="M3 4h2.5l2.2 10.5h9.6L19.5 8H6.5" /><circle cx="9.5" cy="19" r="1.3" /><circle cx="16.5" cy="19" r="1.3" /></>,
-    heart: <path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.6 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z" />,
-    gamepad: <><path d="M7 8h10a4 4 0 0 1 4 4.2l-.5 3.3a2.3 2.3 0 0 1-4 1.2L15 15H9l-1.5 1.7a2.3 2.3 0 0 1-4-1.2L3 12.200A4 4 0 0 1 7 8z" /><path d="M8 10.500v3M6.500 12h3" /><circle cx="15.500" cy="11.500" r=".6" /><circle cx="17.200" cy="13" r=".6" /></>,
-    briefcase: <><rect x="3.500" y="7.500" width="17" height="12" rx="1.500" /><path d="M9 7.500V6a1.500 1.500 0 0 1 1.500-1.500h3A1.500 1.500 0 0 1 15 6v1.500M3.500 13h17" /></>,
-    book: <><path d="M5 4.500h10a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3z" /><path d="M5 17a3 3 0 0 1 3-3h10" /></>,
-    bolt: <path d="M13 3 5 13.500h6L10 21l8-10.500h-6z" />,
-    home: <><path d="M4 11 12 4l8 7" /><path d="M6 10v9.500h12V10" /></>,
-    info: <><circle cx="12" cy="12" r="8.500" /><path d="M12 11v5M12 8v.1" /></>,
-    mail: <><rect x="3.500" y="5.500" width="17" height="13" rx="1.500" /><path d="m4 7 8 6 8-6" /></>,
-    plus: <><path d="M12 5v14" /><path d="M5 12h14" /></>,
-    tag: <><path d="M3.500 12.500 12 4h7.500V11.500L11 20z" /><circle cx="15.500" cy="8.500" r="1" /></>,
-    corner: <><path d="M9 10 4 15l5 5" /><path d="M20 4v7a4 4 0 0 1-4 4H4" /></>,
-  };
-
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      {paths[name] || paths.arrow}
-    </svg>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Component                                                          */
-/* ------------------------------------------------------------------ */
-
-export default function Navbar({ cartCount = 0, wishlistCount = 0 }) {
+export default function Navbar() {
+  const [page, setPage] = useState("Home");
+  const [category, setCategory] = useState("All");
+  const [search, setSearch] = useState("");
+  const [submittedSearch, setSubmittedSearch] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [mobileCatsOpen, setMobileCatsOpen] = useState(false);
-  const [megaOpen, setMegaOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState(0);
-  const [compact, setCompact] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [announceIndex, setAnnounceIndex] = useState(0);
+  const [cart, setCart] = useState([]);
+  const [wishlist, setWishlist] = useState([]);
+  const [notice, setNotice] = useState("");
+  const [form, setForm] = useState({ name: "", email: "", message: "" });
 
-  const searchInput = useRef(null);
-  const megaWrap = useRef(null);
-  const hoverTimer = useRef(null);
-  const resultsRef = useRef(null);
+  const cartCount = cart.reduce((sum, item) => sum + item.qty, 0);
+  const cartTotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
 
-  const location = useLocation();
-  const navigate = useNavigate();
+  const filteredProducts = useMemo(() => PRODUCTS.filter((product) => {
+    const matchesCategory = category === "All" || product.category === category;
+    const text = submittedSearch.trim().toLowerCase();
+    const matchesSearch = !text || [product.name, product.brand, product.category, product.specs]
+      .some((value) => value.toLowerCase().includes(text));
+    return matchesCategory && matchesSearch;
+  }), [category, submittedSearch]);
 
-  const activeCategory =
-    location.pathname === "/laptops"
-      ? new URLSearchParams(location.search).get("category")
-      : null;
-  const laptopsActive = location.pathname === "/laptops" && !activeCategory;
-
-  /* Close everything on route change */
-  useEffect(() => {
+  const goTo = (nextPage) => {
+    setPage(nextPage);
     setMobileOpen(false);
-    setMobileCatsOpen(false);
-    setMegaOpen(false);
-    setSearchOpen(false);
-    setQuery("");
-  }, [location.pathname, location.search]);
-
-  /* Scroll: compact state + progress line */
-  useEffect(() => {
-    const onScroll = () => {
-      const y = window.scrollY;
-      const max = document.documentElement.scrollHeight - window.innerHeight;
-      setCompact(y > 35);
-      setProgress(max > 0 ? Math.min(100, (y / max) * 100) : 0);
-    };
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-    };
-  }, []);
-
-  /* Rotating announcement */
-  useEffect(() => {
-    const id = window.setInterval(
-      () => setAnnounceIndex((i) => (i + 1) % ANNOUNCEMENTS.length),
-      4500
-    );
-    return () => window.clearInterval(id);
-  }, []);
-
-  /* Lock page scroll while the drawer or search is open */
-  useEffect(() => {
-    const lock = mobileOpen || searchOpen;
-    const previous = document.body.style.overflow;
-    if (lock) document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previous;
-    };
-  }, [mobileOpen, searchOpen]);
-
-  /* Close the mega menu when clicking outside it */
-  useEffect(() => {
-    if (!megaOpen) return undefined;
-    const onDown = (event) => {
-      if (megaWrap.current && !megaWrap.current.contains(event.target)) {
-        setMegaOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [megaOpen]);
-
-  /* Search results, grouped in display order */
-  const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return SEARCH_ITEMS;
-    return SEARCH_ITEMS.filter((item) =>
-      `${item.title} ${item.subtitle} ${item.group}`.toLowerCase().includes(q)
-    );
-  }, [query]);
-
-  const openSearch = useCallback(() => {
-    setSearchOpen(true);
-    setMegaOpen(false);
-    setMobileOpen(false);
-    setSelected(0);
-  }, []);
-
-  const closeSearch = useCallback(() => {
-    setSearchOpen(false);
-    setQuery("");
-  }, []);
-
-  const choose = useCallback(
-    (item) => {
-      if (!item) return;
-      navigate(item.to);
-      closeSearch();
-    },
-    [navigate, closeSearch]
-  );
-
-  /* Global shortcuts. Arrow keys work while the search box is focused. */
-  useEffect(() => {
-    const onKeyDown = (event) => {
-      const target = event.target;
-      const typingElsewhere =
-        target instanceof HTMLElement &&
-        target !== searchInput.current &&
-        (target.isContentEditable ||
-          ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
-
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault();
-        searchOpen ? closeSearch() : openSearch();
-        return;
-      }
-
-      if (event.key === "/" && !searchOpen && !typingElsewhere) {
-        event.preventDefault();
-        openSearch();
-        return;
-      }
-
-      if (event.key === "Escape") {
-        setMegaOpen(false);
-        setMobileOpen(false);
-        if (searchOpen) closeSearch();
-        return;
-      }
-
-      if (!searchOpen || typingElsewhere) return;
-
-      if (event.key === "ArrowDown") {
-        event.preventDefault();
-        setSelected((i) => Math.min(i + 1, results.length - 1));
-      } else if (event.key === "ArrowUp") {
-        event.preventDefault();
-        setSelected((i) => Math.max(i - 1, 0));
-      } else if (event.key === "Enter") {
-        event.preventDefault();
-        choose(results[selected]);
-      }
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [searchOpen, results, selected, openSearch, closeSearch, choose]);
-
-  /* Focus the input when the palette opens */
-  useEffect(() => {
-    if (!searchOpen) return undefined;
-    const id = window.setTimeout(() => searchInput.current?.focus(), 50);
-    return () => window.clearTimeout(id);
-  }, [searchOpen]);
-
-  /* Keep the highlighted result in view */
-  useEffect(() => {
-    const node = resultsRef.current?.querySelector('[data-selected="true"]');
-    node?.scrollIntoView({ block: "nearest" });
-  }, [selected]);
-
-  /* Hover intent for the mega menu (mouse only) */
-  const hoverOpen = () => {
-    window.clearTimeout(hoverTimer.current);
-    hoverTimer.current = window.setTimeout(() => setMegaOpen(true), 120);
+    setNotice("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
-  const hoverClose = () => {
-    window.clearTimeout(hoverTimer.current);
-    hoverTimer.current = window.setTimeout(() => setMegaOpen(false), 220);
+
+  const runSearch = (event) => {
+    event.preventDefault();
+    setSubmittedSearch(search);
+    setCategory("All");
+    goTo("Products");
   };
-  useEffect(() => () => window.clearTimeout(hoverTimer.current), []);
 
-  /* Build grouped search list while keeping flat indexes for keyboard nav */
-  let flatIndex = -1;
-  const groups = results.reduce((acc, item) => {
-    (acc[item.group] = acc[item.group] || []).push(item);
-    return acc;
-  }, {});
+  const addToCart = (product) => {
+    setCart((current) => current.some((item) => item.id === product.id)
+      ? current.map((item) => item.id === product.id ? { ...item, qty: item.qty + 1 } : item)
+      : [...current, { ...product, qty: 1 }]);
+    setNotice(`${product.name} added to your cart.`);
+  };
 
-  return (
-    <>
-      <style>{CSS}</style>
+  const changeQty = (id, delta) => {
+    setCart((current) => current
+      .map((item) => item.id === id ? { ...item, qty: item.qty + delta } : item)
+      .filter((item) => item.qty > 0));
+  };
 
-      <header className={`lhx ${compact ? "is-compact" : ""}`}>
-        {/* Announcement bar */}
-        <div className="lhx-announce">
-          <div className="lhx-wrap lhx-announce-row">
-            <p key={announceIndex} className="lhx-announce-text" aria-live="polite">
-              {ANNOUNCEMENTS[announceIndex]}
-            </p>
-            <Link to="/contact" className="lhx-announce-link">
-              Talk to an expert
-            </Link>
+  const toggleWishlist = (product) => {
+    const saved = wishlist.some((item) => item.id === product.id);
+    setWishlist((current) => saved ? current.filter((item) => item.id !== product.id) : [...current, product]);
+    setNotice(saved ? "Removed from wishlist." : "Added to wishlist.");
+  };
+
+  const ProductCard = ({ product }) => {
+    const saved = wishlist.some((item) => item.id === product.id);
+    return (
+      <article className="group overflow-hidden rounded-2xl border border-white/10 bg-[#0b1022] transition duration-300 hover:-translate-y-1 hover:border-cyan-300/40 hover:shadow-[0_15px_50px_#06b6d415]">
+        <div className="relative overflow-hidden bg-gradient-to-br from-cyan-400/10 to-violet-500/10 p-3">
+          <span className="absolute left-5 top-5 z-10 rounded-full border border-cyan-300/20 bg-[#050816]/90 px-3 py-1 text-[9px] font-bold tracking-widest text-cyan-200">{product.badge}</span>
+          <button onClick={() => toggleWishlist(product)} aria-label="Toggle wishlist" className={`absolute right-5 top-5 z-10 rounded-full bg-[#050816]/90 p-2 transition hover:scale-110 ${saved ? "text-fuchsia-300" : "text-slate-300"}`}>
+            <Heart size={17} fill={saved ? "currentColor" : "none"} />
+          </button>
+          <img src={product.image} alt={product.name} loading="lazy" className="h-48 w-full rounded-xl object-cover transition duration-500 group-hover:scale-[1.04]" />
+        </div>
+        <div className="p-5">
+          <div className="flex items-center justify-between gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+            <span>{product.brand} · {product.category}</span>
+            <span className="flex items-center gap-1 text-amber-300"><Star size={12} fill="currentColor" />{product.rating}</span>
+          </div>
+          <h3 className="mt-3 min-h-12 font-bold leading-6">{product.name}</h3>
+          <p className="mt-1 min-h-10 text-xs leading-5 text-slate-400">{product.specs}</p>
+          <div className="mt-4 flex items-end justify-between gap-2">
+            <div><p className="font-extrabold">{money(product.price)}</p>{product.oldPrice && <p className="mt-1 text-xs text-slate-500 line-through">{money(product.oldPrice)}</p>}</div>
+            <button onClick={() => addToCart(product)} className="flex items-center gap-2 rounded-xl bg-cyan-300 px-3 py-2.5 text-xs font-extrabold text-slate-950 transition hover:bg-cyan-200"><ShoppingCart size={14} /> Add to cart</button>
           </div>
         </div>
+      </article>
+    );
+  };
 
-        {/* Main bar */}
-        <div className="lhx-wrap lhx-main">
-          <Link to="/" className="lhx-brand" aria-label="LaptopHub home">
-            <span className="lhx-logo" aria-hidden="true">
-              <svg viewBox="0 0 32 32" width="22" height="22">
-                <path d="M6 5h6v16h14v6H6z" fill="currentColor" />
-              </svg>
-            </span>
-            <span className="lhx-brand-copy">
-              <span className="lhx-brand-name">
-                Laptop<b>Hub</b>
-              </span>
-              <span className="lhx-brand-sub">Performance laptops</span>
-            </span>
-          </Link>
+  const SectionHeading = ({ eyebrow, title, description }) => (
+    <div className="mb-8">
+      {eyebrow && <p className="mb-3 text-xs font-bold uppercase tracking-[.25em] text-cyan-300">{eyebrow}</p>}
+      <h2 className="text-3xl font-black sm:text-4xl">{title}</h2>
+      {description && <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">{description}</p>}
+    </div>
+  );
 
-          <nav className="lhx-links" aria-label="Main navigation">
-            <NavLink to="/" end className={({ isActive }) => `lhx-link ${isActive ? "active" : ""}`}>
-              Home
-            </NavLink>
-            <Link to="/laptops" className={`lhx-link ${laptopsActive ? "active" : ""}`}>
-              Laptops
-            </Link>
+  const categories = [
+    { name: "Gaming", detail: "High-performance machines", icon: Gamepad2 },
+    { name: "Student", detail: "Study, create, achieve", icon: GraduationCap },
+    { name: "Business", detail: "Work without limits", icon: BriefcaseBusiness },
+  ];
 
-            <span className="lhx-divider" aria-hidden="true" />
+  return (
+    <div className="laptophub-neon min-h-screen bg-[#03051d] text-white">
+      <style>{`
+        .laptophub-neon {
+          --neon-cyan: #00d9ff;
+          --neon-blue: #246bff;
+          --neon-purple: #a100ff;
+          --neon-pink: #ed27ff;
+          background: radial-gradient(ellipse at 12% 15%, rgba(0,80,255,.16), transparent 38%),
+                      radial-gradient(ellipse at 88% 30%, rgba(126,0,255,.13), transparent 38%),
+                      linear-gradient(135deg,#02051c 0%,#030726 48%,#08002d 100%);
+          isolation: isolate;
+        }
+        .laptophub-neon header {
+          background: linear-gradient(100deg,rgba(2,5,28,.97),rgba(4,4,43,.96) 55%,rgba(17,0,48,.96)) !important;
+          box-shadow: 0 8px 36px rgba(0,0,0,.35), 0 1px 0 rgba(0,217,255,.22);
+        }
+        .laptophub-neon header > div:first-child {
+          background: linear-gradient(100deg,#02072b,#08053d 45%,#16002e) !important;
+          border-bottom: 1px solid transparent !important;
+          border-image: linear-gradient(90deg,#075bff,#00e5ff,#7d2bff,#ef20ff) 1;
+          position: relative;
+        }
+        .laptophub-neon header > div:first-child:after {
+          content: ''; position:absolute; left:0; right:0; bottom:-1px; height:1px;
+          background:linear-gradient(90deg,transparent,#087bff,#00eaff,#a100ff,#ff22ee,transparent);
+          box-shadow:0 0 12px #5c38ff;
+        }
+        .laptophub-neon .neon-grid {
+          opacity:.62;
+          background-image: radial-gradient(circle,rgba(0,132,255,.5) 1px,transparent 1.5px);
+          background-size: 14px 14px;
+          mask-image: linear-gradient(90deg,black,transparent 38%,transparent 65%,black);
+        }
+        .laptophub-neon .neon-line {
+          position:absolute; display:block; width:2px; height:190px; opacity:.95;
+          transform:rotate(42deg); filter:blur(.2px);
+          box-shadow:0 0 7px currentColor,0 0 18px currentColor,0 0 32px currentColor;
+          animation: neonDrift 7s ease-in-out infinite alternate;
+        }
+        .laptophub-neon .neon-line:nth-child(2n) { animation-delay:-3s; }
+        .laptophub-neon header .neon-line { color:#00d9ff; }
+        .laptophub-neon header .neon-line.bg-violet-400 { color:#a855f7; }
+        .laptophub-neon header .neon-line.bg-fuchsia-400 { color:#ed27ff; }
+        .laptophub-neon main > section:first-child { position:relative; }
+        .laptophub-neon main > section:first-child:before {
+          content:''; pointer-events:none; position:absolute; z-index:-1; top:0; left:-3%; right:-3%; height:145px;
+          border-bottom:2px solid #143dff; border-radius:0 0 50% 45% / 0 0 42% 35%;
+          box-shadow:0 4px 12px rgba(0,119,255,.65),0 8px 24px rgba(140,0,255,.24);
+          transform:translateY(-78px) rotate(-1deg);
+        }
+        .laptophub-neon main > section:first-child:after {
+          content:''; pointer-events:none; position:absolute; z-index:-1; top:32px; left:-4%; right:-4%; height:90px;
+          border-bottom:2px solid #00d9ff; border-radius:0 0 50% 42% / 0 0 60% 45%;
+          filter:drop-shadow(0 0 7px #00d9ff); opacity:.7; transform:rotate(1deg);
+        }
+        .laptophub-neon button { transition: border-color .22s ease, box-shadow .22s ease, color .22s ease, transform .22s ease; }
+        .laptophub-neon header nav button:hover,
+        .laptophub-neon header nav button.text-cyan-300 { color:#c45cff !important; text-shadow:0 0 12px rgba(174,55,255,.7); }
+        .laptophub-neon header nav button span { background:linear-gradient(90deg,#00d9ff,#335dff,#d527ff) !important; box-shadow:0 0 12px rgba(0,217,255,.85); }
+        .laptophub-neon header form { border-color:#3925c9 !important; background:rgba(8,9,43,.85) !important; box-shadow:inset 0 0 14px rgba(50,30,255,.1); }
+        .laptophub-neon header form:focus-within { border-color:#00d9ff !important; box-shadow:0 0 18px rgba(0,217,255,.18); }
+        .laptophub-neon header button.rounded-full { border-color:rgba(34,113,255,.6); }
+        .laptophub-neon header button.rounded-full:hover { box-shadow:0 0 18px rgba(40,112,255,.32); }
+        .laptophub-neon .bg-cyan-300 { background:linear-gradient(110deg,#00d9ff,#2b7cff 55%,#b329ff) !important; }
+        .laptophub-neon .bg-cyan-300:hover { filter:brightness(1.13); box-shadow:0 0 22px rgba(76,74,255,.4); }
+        .laptophub-neon .text-cyan-300 { color:#42ddff; }
+        .laptophub-neon .border-cyan-300\/40 { border-color:rgba(67,100,255,.65); }
+        .laptophub-neon .float-slow { animation: laptopFloat 6s ease-in-out infinite; }
+        @keyframes neonDrift { from { transform:translateY(-10px) rotate(42deg); } to { transform:translateY(16px) rotate(42deg); } }
+        @keyframes laptopFloat { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-7px); } }
+        @media (prefers-reduced-motion: reduce) { .laptophub-neon * { animation:none !important; scroll-behavior:auto !important; } }
+      `}</style>
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#050816]/90 backdrop-blur-2xl">
+        <div className="border-b border-white/[.06] bg-[#080d23] px-3 py-2 text-center text-xs text-slate-300">
+          <span className="inline-flex items-center gap-2"><Rocket size={14} className="text-cyan-300" /> Your next upgrade starts here <span className="hidden sm:inline text-slate-600">·</span><span className="hidden sm:inline">Explore the LaptopHub collection</span></span>
+        </div>
+        <div className="relative mx-auto flex max-w-7xl items-center gap-3 overflow-hidden px-4 py-4 sm:px-6 lg:gap-7 lg:px-8">
+          <div className="neon-grid pointer-events-none absolute inset-0" />
+          <div className="pointer-events-none absolute inset-0 overflow-hidden">
+            <i className="neon-line left-[18%] top-[-80px] bg-cyan-300" />
+            <i className="neon-line left-[45%] top-[-70px] bg-blue-500" />
+            <i className="neon-line right-[24%] top-[-90px] bg-violet-400" />
+            <i className="neon-line right-[5%] top-[-75px] bg-fuchsia-400" />
+          </div>
+          <button onClick={() => goTo("Home")} className="relative flex shrink-0 items-center gap-2 text-left">
+            <span className="rounded-2xl border border-cyan-300/40 bg-cyan-300/10 p-3 text-cyan-300 shadow-[0_0_25px_#06b6d415]"><Laptop size={25} /></span>
+            <span className="text-xl font-black sm:text-2xl">Laptop<span className="text-cyan-300">Hub</span><small className="hidden text-[9px] tracking-[.22em] text-slate-500 sm:block">YOUR TECH PARTNER</small></span>
+          </button>
 
-            {CATEGORIES.map((cat) => (
-              <Link
-                key={cat.name}
-                to={`/laptops?category=${encodeURIComponent(cat.name)}`}
-                className={`lhx-link ${activeCategory === cat.name ? "active" : ""}`}
-              >
-                <Icon name={cat.icon} size={15} />
-                {cat.name}
-              </Link>
-            ))}
-
-            <span className="lhx-divider" aria-hidden="true" />
-
-            <NavLink to="/about" className={({ isActive }) => `lhx-link ${isActive ? "active" : ""}`}>
-              About
-            </NavLink>
-            <NavLink to="/contact" className={({ isActive }) => `lhx-link ${isActive ? "active" : ""}`}>
-              Contact
-            </NavLink>
+          <nav className="relative ml-auto hidden items-center gap-5 xl:flex">
+            {NAV_LINKS.map((link) => <button key={link.page} onClick={() => goTo(link.page)} className={`text-sm transition ${page === link.page ? "font-semibold text-cyan-300" : "text-slate-300 hover:text-white"}`}>{link.label}{page === link.page && <span className="mt-2 block h-0.5 rounded-full bg-gradient-to-r from-cyan-300 to-fuchsia-400" />}</button>)}
           </nav>
 
-          <div className="lhx-actions">
-            <button
-              type="button"
-              className="lhx-search"
-              onClick={openSearch}
-              aria-label="Search the site (Ctrl K)"
-            >
-              <Icon name="search" size={17} />
-              <span className="lhx-search-text">Search laptops and pages</span>
-              <kbd>Ctrl K</kbd>
-            </button>
+          <form onSubmit={runSearch} className="relative ml-auto hidden h-10 max-w-[220px] flex-1 items-center rounded-full border border-white/10 bg-white/[.04] px-3 focus-within:border-cyan-300/60 md:flex xl:ml-0">
+            <Search size={16} className="shrink-0 text-slate-400" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search laptops..." aria-label="Search laptops" className="min-w-0 flex-1 bg-transparent px-2 text-xs outline-none placeholder:text-slate-500" />
+            <button type="submit" aria-label="Search"><ArrowRight size={16} className="text-cyan-300" /></button>
+          </form>
 
-            <Link to="/wishlist" className="lhx-icon-btn lhx-hide-sm" aria-label={`Wishlist, ${wishlistCount} items`}>
-              <Icon name="heart" size={18} />
-              {wishlistCount > 0 && <span className="lhx-badge">{wishlistCount}</span>}
-            </Link>
-
-            <Link to="/cart" className="lhx-icon-btn" aria-label={`Cart, ${cartCount} items`}>
-              <Icon name="cart" size={18} />
-              {cartCount > 0 && <span className="lhx-badge">{cartCount}</span>}
-            </Link>
-
-            <Link to="/signin" className="lhx-signin">
-              <Icon name="user" size={16} /> Sign in
-            </Link>
-
-            <Link to="/signup" className="lhx-join">
-              Join LaptopHub
-            </Link>
-
-            <button
-              type="button"
-              className="lhx-burger"
-              aria-label={mobileOpen ? "Close menu" : "Open menu"}
-              aria-expanded={mobileOpen}
-              onClick={() => {
-                setMobileOpen((o) => !o);
-                setMegaOpen(false);
-              }}
-            >
-              <Icon name={mobileOpen ? "close" : "menu"} size={21} />
-            </button>
+          <div className="relative flex items-center gap-2">
+            <button onClick={() => goTo("Wishlist")} aria-label="Wishlist" className="relative rounded-full border border-white/10 p-2.5 transition hover:border-fuchsia-300/50 hover:text-fuchsia-300"><Heart size={18} />{wishlist.length > 0 && <b className="absolute -right-1 -top-1 rounded-full bg-fuchsia-500 px-1.5 text-[9px]">{wishlist.length}</b>}</button>
+            <button onClick={() => goTo("Cart")} aria-label="Cart" className="relative rounded-full border border-white/10 p-2.5 transition hover:border-cyan-300/50 hover:text-cyan-300"><ShoppingCart size={18} />{cartCount > 0 && <b className="absolute -right-1 -top-1 rounded-full bg-cyan-300 px-1.5 text-[9px] text-slate-950">{cartCount}</b>}</button>
+            <button onClick={() => goTo("Account")} aria-label="Account" className="hidden rounded-full border border-white/10 p-2.5 transition hover:text-cyan-300 sm:block"><UserRound size={18} /></button>
+            <button onClick={() => setMobileOpen(!mobileOpen)} aria-label="Toggle menu" aria-expanded={mobileOpen} className="rounded-full border border-white/10 p-2.5 xl:hidden">{mobileOpen ? <X size={18} /> : <Menu size={18} />}</button>
           </div>
         </div>
 
-        <div className="lhx-progress" aria-hidden="true">
-          <span style={{ transform: `scaleX(${progress / 100})` }} />
-        </div>
+        {mobileOpen && <div className="border-t border-white/10 bg-[#080d23] p-4 xl:hidden">
+          <form onSubmit={runSearch} className="mb-3 flex h-11 items-center rounded-xl border border-white/10 px-3 md:hidden"><Search size={16} /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search laptops..." className="min-w-0 flex-1 bg-transparent px-3 text-sm outline-none" /><button aria-label="Search"><ArrowRight size={16} /></button></form>
+          <nav className="grid grid-cols-2 gap-2 sm:grid-cols-3">{NAV_LINKS.map((link) => <button key={link.page} onClick={() => goTo(link.page)} className={`rounded-xl px-4 py-3 text-left text-sm ${page === link.page ? "bg-cyan-300/10 text-cyan-300" : "text-slate-300 hover:bg-white/5"}`}>{link.label}</button>)}</nav>
+          <button onClick={() => goTo("Account")} className="mt-2 w-full rounded-xl px-4 py-3 text-left text-sm text-slate-300 hover:bg-white/5">Login / Register</button>
+        </div>}
       </header>
 
-      {/* Mobile drawer */}
-      {mobileOpen && (
-        <div className="lhx-drawer-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setMobileOpen(false)}>
-          <aside className="lhx-drawer" aria-label="Mobile menu">
-            <div className="lhx-drawer-head">
-              <span className="lhx-brand-name">
-                Laptop<b>Hub</b>
-              </span>
-              <button type="button" className="lhx-icon-btn" aria-label="Close menu" onClick={() => setMobileOpen(false)}>
-                <Icon name="close" size={19} />
-              </button>
-            </div>
+      {notice && <div role="status" className="fixed right-4 top-28 z-[60] flex max-w-sm items-center gap-2 rounded-xl border border-cyan-300/30 bg-[#0b1022] px-4 py-3 text-sm shadow-2xl"><CheckCircle2 size={17} className="shrink-0 text-cyan-300" />{notice}<button onClick={() => setNotice("")} className="ml-2 text-slate-400"><X size={15} /></button></div>}
 
-            <button type="button" className="lhx-drawer-search" onClick={openSearch}>
-              <Icon name="search" size={17} /> Search laptops and pages
-            </button>
-
-            <nav className="lhx-drawer-links">
-              {NAV_LINKS.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  end={item.end}
-                  className={({ isActive }) => (isActive ? "active" : "")}
-                >
-                  {item.label}
-                  <Icon name="arrow" size={16} />
-                </NavLink>
-              ))}
-
-              <div className="lhx-drawer-label">Categories</div>
-              <div className="lhx-drawer-sub">
-                {CATEGORIES.map((cat) => (
-                  <Link
-                    key={cat.name}
-                    to={`/laptops?category=${encodeURIComponent(cat.name)}`}
-                    className={activeCategory === cat.name ? "active" : ""}
-                  >
-                    <Icon name={cat.icon} size={17} />
-                    {cat.name}
-                  </Link>
-                ))}
+      <main>
+        {page === "Home" && <>
+          <section className="relative isolate overflow-hidden">
+            <div className="neon-grid pointer-events-none absolute inset-0 -z-10" />
+            <div className="pointer-events-none absolute -right-24 top-10 -z-10 h-96 w-96 rounded-full bg-blue-600/15 blur-[100px]" />
+            <div className="pointer-events-none absolute -left-24 bottom-0 -z-10 h-80 w-80 rounded-full bg-fuchsia-600/10 blur-[100px]" />
+            <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 py-16 sm:px-6 sm:py-24 lg:grid-cols-[1.05fr_.95fr] lg:px-8 lg:py-28">
+              <div>
+                <p className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/[.07] px-4 py-2 text-xs font-semibold text-cyan-200"><Zap size={14} /> TECHNOLOGY, YOUR WAY</p>
+                <h1 className="mt-6 max-w-2xl text-5xl font-black leading-[1.04] tracking-tight sm:text-6xl lg:text-7xl">Find your next <span className="bg-gradient-to-r from-cyan-300 via-blue-400 to-fuchsia-400 bg-clip-text text-transparent">power move.</span></h1>
+                <p className="mt-6 max-w-xl text-base leading-7 text-slate-400 sm:text-lg">Discover laptops built for big ideas — from your first class to your next level in gaming and business.</p>
+                <div className="mt-8 flex flex-wrap gap-3"><button onClick={() => { setCategory("All"); setSubmittedSearch(""); goTo("Products"); }} className="flex items-center gap-2 rounded-xl bg-cyan-300 px-6 py-3.5 text-sm font-extrabold text-slate-950 transition hover:bg-cyan-200">Explore laptops <ArrowRight size={17} /></button><button onClick={() => goTo("Categories")} className="rounded-xl border border-white/15 px-6 py-3.5 text-sm font-bold transition hover:border-cyan-300/50">Browse categories</button></div>
+                <div className="mt-10 grid max-w-lg grid-cols-3 gap-4 border-t border-white/10 pt-6"><div><p className="text-2xl font-black">6<span className="text-cyan-300">+</span></p><p className="mt-1 text-xs text-slate-500">Featured models</p></div><div><p className="text-2xl font-black">3</p><p className="mt-1 text-xs text-slate-500">Laptop categories</p></div><div><p className="text-2xl font-black">24/7</p><p className="mt-1 text-xs text-slate-500">Browse online</p></div></div>
               </div>
-            </nav>
-
-            <div className="lhx-drawer-foot">
-              <Link to="/signin" className="lhx-signin">
-                <Icon name="user" size={16} /> Sign in
-              </Link>
-              <Link to="/signup" className="lhx-join">
-                Join LaptopHub
-              </Link>
-            </div>
-          </aside>
-        </div>
-      )}
-
-      {/* Command palette */}
-      {searchOpen && (
-        <div className="lhx-cmd-backdrop" onMouseDown={(e) => e.target === e.currentTarget && closeSearch()}>
-          <section className="lhx-cmd" role="dialog" aria-modal="true" aria-label="Site search">
-            <div className="lhx-cmd-top">
-              <Icon name="search" size={19} />
-              <input
-                ref={searchInput}
-                type="search"
-                value={query}
-                onChange={(e) => {
-                  setQuery(e.target.value);
-                  setSelected(0);
-                }}
-                placeholder="Search a category, budget or page"
-                aria-label="Search"
-                autoComplete="off"
-              />
-              <button type="button" onClick={closeSearch} aria-label="Close search">
-                <kbd>Esc</kbd>
-              </button>
-            </div>
-
-            <div className="lhx-cmd-results" ref={resultsRef}>
-              {results.length === 0 ? (
-                <div className="lhx-cmd-empty">
-                  <strong>No results for “{query}”</strong>
-                  <span>Try “gaming”, “student” or “contact”.</span>
+              <div className="relative mx-auto w-full max-w-xl">
+                <div className="absolute inset-8 rounded-full bg-cyan-400/10 blur-3xl" />
+                <div className="relative rounded-[2rem] border border-white/10 bg-gradient-to-br from-white/[.08] to-white/[.015] p-4 shadow-[0_30px_100px_#0008] sm:p-6">
+                  <div className="mb-4 flex items-center justify-between"><span className="text-xs font-bold tracking-[.2em] text-slate-400">LAPTOPHUB / COLLECTION 01</span><span className="flex items-center gap-1.5 text-xs text-cyan-300"><span className="h-1.5 w-1.5 rounded-full bg-cyan-300" /> FEATURED</span></div>
+                  <img src={PRODUCTS[0].image} alt="Featured laptop" className="float-slow h-64 w-full rounded-2xl object-cover sm:h-80" />
+                  <div className="flex flex-wrap items-center justify-between gap-4 p-3"><div><p className="text-xs text-slate-400">POWER MEETS PRECISION</p><h2 className="mt-1 text-xl font-black">ASUS ROG Zephyrus G16</h2></div><button onClick={() => { setSubmittedSearch(""); setCategory("All"); goTo("Products"); }} className="rounded-full border border-cyan-300/40 p-3 text-cyan-300 hover:bg-cyan-300 hover:text-slate-950"><ArrowUpRight size={20} /></button></div>
                 </div>
-              ) : (
-                Object.entries(groups).map(([group, items]) => (
-                  <div key={group} className="lhx-cmd-group">
-                    <div className="lhx-cmd-label">{group}</div>
-                    {items.map((item) => {
-                      flatIndex += 1;
-                      const index = flatIndex;
-                      const active = index === selected;
-                      return (
-                        <button
-                          key={item.to + item.title}
-                          type="button"
-                          data-selected={active}
-                          className={`lhx-cmd-item ${active ? "selected" : ""}`}
-                          onMouseMove={() => setSelected(index)}
-                          onClick={() => choose(item)}
-                        >
-                          <span className="lhx-cmd-ico">
-                            <Icon name={item.icon} size={17} />
-                          </span>
-                          <span className="lhx-cmd-copy">
-                            <strong>{item.title}</strong>
-                            <small>{item.subtitle}</small>
-                          </span>
-                          {active && <Icon name="corner" size={15} />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div className="lhx-cmd-foot">
-              <span><kbd>↑</kbd><kbd>↓</kbd> Move</span>
-              <span><kbd>Enter</kbd> Open</span>
-              <span><kbd>/</kbd> Open search from anywhere</span>
+                <div className="absolute -bottom-5 -left-3 rounded-2xl border border-white/10 bg-[#0b1022] p-4 shadow-xl sm:-left-8"><p className="text-xs text-slate-400">Selected for you</p><p className="mt-1 font-bold"><span className="text-cyan-300">✦</span> Performance collection</p></div>
+              </div>
             </div>
           </section>
+
+          <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+            <SectionHeading eyebrow="SHOP YOUR STYLE" title="Find your kind of power" description="The right laptop for every goal, from gaming marathons to classroom projects." />
+            <div className="grid gap-4 md:grid-cols-3">{categories.map(({ name, detail, icon: Icon }) => <button key={name} onClick={() => { setCategory(name); setSubmittedSearch(""); goTo("Products"); }} className="group flex items-center gap-4 rounded-2xl border border-white/10 bg-[#0b1022] p-5 text-left transition hover:border-cyan-300/40 hover:bg-cyan-300/[.04]"><span className="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-4 text-cyan-300"><Icon size={25} /></span><span className="flex-1"><b className="block text-lg">{name}</b><small className="mt-1 block text-slate-400">{detail}</small></span><ArrowUpRight className="text-slate-500 transition group-hover:text-cyan-300" /></button>)}</div>
+          </section>
+
+          <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+            <SectionHeading eyebrow="THE SHORTLIST" title="Featured laptops" description="A few favourites to help you get started." />
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{PRODUCTS.slice(0, 3).map((product) => <ProductCard key={product.id} product={product} />)}</div>
+            <div className="mt-8 text-center"><button onClick={() => { setCategory("All"); setSubmittedSearch(""); goTo("Products"); }} className="rounded-xl border border-white/15 px-6 py-3 text-sm font-bold hover:border-cyan-300/50">View all laptops <ArrowRight className="ml-2 inline" size={16} /></button></div>
+          </section>
+
+          <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8"><div className="grid gap-4 md:grid-cols-3">{[{icon:Truck,title:"Convenient shopping",text:"Browse the collection from wherever you are."},{icon:ShieldCheck,title:"Clear product details",text:"Compare specifications and prices before choosing."},{icon:Headphones,title:"Here to help",text:"Contact us if you need help choosing a model."}].map(({icon:Icon,title,text})=><div key={title} className="rounded-2xl border border-white/10 bg-white/[.025] p-6"><Icon className="text-cyan-300" size={24}/><h3 className="mt-4 font-bold">{title}</h3><p className="mt-2 text-sm leading-6 text-slate-400">{text}</p></div>)}</div></section>
+        </>}
+
+        {page === "Products" && <section className="mx-auto min-h-[65vh] max-w-7xl px-4 py-14 sm:px-6 lg:px-8"><SectionHeading eyebrow="THE COLLECTION" title="Explore laptops" description="Compare popular options for gaming, studying, and business." /><div className="mb-7 flex flex-wrap items-center gap-2">{["All", "Gaming", "Student", "Business"].map((name) => <button key={name} onClick={() => setCategory(name)} className={`rounded-full border px-4 py-2 text-sm transition ${category === name ? "border-cyan-300 bg-cyan-300 text-slate-950" : "border-white/10 text-slate-300 hover:border-cyan-300/50"}`}>{name}</button>)}<span className="ml-auto text-xs text-slate-500">{filteredProducts.length} models</span></div>{submittedSearch && <div className="mb-5 flex items-center gap-2 text-sm text-slate-400">Search results for <b className="text-white">“{submittedSearch}”</b><button onClick={() => { setSearch(""); setSubmittedSearch(""); }} className="text-cyan-300 underline">Clear</button></div>}{filteredProducts.length ? <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{filteredProducts.map((product) => <ProductCard key={product.id} product={product} />)}</div> : <div className="rounded-2xl border border-white/10 p-12 text-center"><Search className="mx-auto text-slate-500" size={30}/><h3 className="mt-4 text-xl font-bold">No laptops found</h3><p className="mt-2 text-sm text-slate-400">Try another search or category.</p><button onClick={() => { setSearch(""); setSubmittedSearch(""); setCategory("All"); }} className="mt-5 rounded-xl bg-cyan-300 px-5 py-3 text-sm font-bold text-slate-950">Reset filters</button></div>}</section>}
+
+        {page === "Categories" && <section className="mx-auto min-h-[65vh] max-w-7xl px-4 py-14 sm:px-6 lg:px-8"><SectionHeading eyebrow="MADE FOR YOUR MISSION" title="Shop by category" description="Choose the kind of laptop that fits what you want to do next."/><div className="grid gap-5 md:grid-cols-3">{categories.map(({name,detail,icon:Icon},index)=><button key={name} onClick={()=>{setCategory(name);setSubmittedSearch("");goTo("Products");}} className="group rounded-3xl border border-white/10 bg-gradient-to-br from-[#0d1830] to-[#0b1022] p-7 text-left transition hover:border-cyan-300/40"><span className="inline-flex rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-4 text-cyan-300"><Icon size={30}/></span><p className="mt-8 text-xs tracking-widest text-slate-500">CATEGORY 0{index+1}</p><h2 className="mt-2 text-2xl font-black">{name}</h2><p className="mt-3 text-sm text-slate-400">{detail}</p><span className="mt-8 inline-flex items-center gap-2 text-sm font-bold text-cyan-300">Explore collection <ArrowRight size={16}/></span></button>)}</div></section>}
+
+        {page === "About" && <section className="mx-auto min-h-[65vh] max-w-5xl px-4 py-16 sm:px-6 lg:px-8"><p className="text-xs font-bold uppercase tracking-[.25em] text-cyan-300">A little about us</p><h1 className="mt-4 max-w-3xl text-4xl font-black leading-tight sm:text-6xl">Good technology should move <span className="text-cyan-300">you forward.</span></h1><p className="mt-6 max-w-3xl text-lg leading-8 text-slate-400">LaptopHub is a laptop-shopping demo built to make exploring technology feel simple. We bring gaming, student, and business laptop options together in one place, with easy-to-read specifications and a straightforward shopping experience.</p><div className="mt-10 grid gap-4 sm:grid-cols-3">{[{n:"01",t:"Explore",d:"Discover options for your needs."},{n:"02",t:"Compare",d:"Review specs and sample prices."},{n:"03",t:"Choose",d:"Save favourites or add to your cart."}].map(x=><div key={x.n} className="rounded-2xl border border-white/10 bg-[#0b1022] p-6"><span className="text-sm font-bold text-cyan-300">{x.n}</span><h2 className="mt-4 text-xl font-bold">{x.t}</h2><p className="mt-2 text-sm leading-6 text-slate-400">{x.d}</p></div>)}</div><p className="mt-8 rounded-xl border border-amber-300/20 bg-amber-300/[.05] p-4 text-sm leading-6 text-amber-100/80">Demo notice: product listings, ratings, and prices are sample content for this website template. Confirm real availability and pricing before making a purchase.</p></section>}
+
+        {page === "Contact" && <section className="mx-auto min-h-[65vh] max-w-6xl px-4 py-14 sm:px-6 lg:px-8"><SectionHeading eyebrow="LET'S TALK TECH" title="Contact LaptopHub" description="Have a question about a laptop? Send a message using the demo form."/><div className="grid gap-8 md:grid-cols-[.8fr_1.2fr]"><div className="space-y-4"><div className="rounded-2xl border border-white/10 bg-[#0b1022] p-5"><Mail className="text-cyan-300"/><h3 className="mt-3 font-bold">Email</h3><p className="mt-1 text-sm text-slate-400">hello@laptophub.example</p></div><div className="rounded-2xl border border-white/10 bg-[#0b1022] p-5"><Phone className="text-cyan-300"/><h3 className="mt-3 font-bold">Phone</h3><p className="mt-1 text-sm text-slate-400">Add your business phone number here</p></div><div className="rounded-2xl border border-white/10 bg-[#0b1022] p-5"><MapPin className="text-cyan-300"/><h3 className="mt-3 font-bold">Location</h3><p className="mt-1 text-sm text-slate-400">Pakistan</p></div></div><form onSubmit={(e)=>{e.preventDefault();setNotice("Thanks! This demo form does not send messages to a server.");setForm({name:"",email:"",message:""});}} className="space-y-4 rounded-2xl border border-white/10 bg-[#0b1022] p-6"><label className="block text-sm font-semibold">Your name<input required value={form.name} onChange={e=>setForm({...form,name:e.target.value})} className="mt-2 w-full rounded-xl border border-white/10 bg-[#050816] px-4 py-3 outline-none focus:border-cyan-300/60" placeholder="Enter your name"/></label><label className="block text-sm font-semibold">Email address<input required type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} className="mt-2 w-full rounded-xl border border-white/10 bg-[#050816] px-4 py-3 outline-none focus:border-cyan-300/60" placeholder="you@example.com"/></label><label className="block text-sm font-semibold">Message<textarea required rows="5" value={form.message} onChange={e=>setForm({...form,message:e.target.value})} className="mt-2 w-full resize-y rounded-xl border border-white/10 bg-[#050816] px-4 py-3 outline-none focus:border-cyan-300/60" placeholder="How can we help?"/></label><button className="w-full rounded-xl bg-cyan-300 px-5 py-3 font-extrabold text-slate-950 hover:bg-cyan-200">Send message <ArrowRight className="ml-2 inline" size={16}/></button></form></div></section>}
+
+        {page === "Cart" && <section className="mx-auto min-h-[65vh] max-w-5xl px-4 py-14 sm:px-6"><p className="text-xs font-bold uppercase tracking-widest text-cyan-300">YOUR BAG</p><h1 className="mt-3 text-4xl font-black">Shopping cart</h1>{!cart.length ? <div className="mt-8 rounded-3xl border border-white/10 bg-white/[.025] px-6 py-16 text-center"><ShoppingCart className="mx-auto text-slate-500" size={32}/><h2 className="mt-4 text-xl font-bold">Your cart is empty</h2><p className="mt-2 text-sm text-slate-400">Browse laptops and add a favourite.</p><button onClick={()=>goTo("Products")} className="mt-6 rounded-xl bg-cyan-300 px-5 py-3 text-sm font-bold text-slate-950">Browse laptops</button></div> : <div className="mt-8 grid gap-5 lg:grid-cols-[1fr_300px]"><div className="space-y-3">{cart.map(item=><div key={item.id} className="flex gap-4 rounded-2xl border border-white/10 bg-[#0b1022] p-4"><img src={item.image} alt={item.name} className="h-24 w-24 rounded-xl object-cover"/><div className="flex-1"><b>{item.name}</b><p className="mt-2 text-sm text-cyan-300">{money(item.price)}</p><div className="mt-3 flex items-center gap-4"><button onClick={()=>changeQty(item.id,-1)} aria-label="Decrease quantity"><Minus size={14}/></button><span>{item.qty}</span><button onClick={()=>changeQty(item.id,1)} aria-label="Increase quantity"><Plus size={14}/></button></div></div><button onClick={()=>setCart(c=>c.filter(x=>x.id!==item.id))} aria-label="Remove item" className="text-slate-500 hover:text-rose-300"><Trash2 size={17}/></button></div>)}</div><aside className="h-fit rounded-2xl border border-white/10 bg-[#0b1022] p-5"><h2 className="font-bold">Order summary</h2><p className="mt-5 flex justify-between text-sm text-slate-400"><span>Subtotal</span><span>{money(cartTotal)}</span></p><div className="my-4 border-t border-white/10"/><p className="flex justify-between font-extrabold"><span>Total</span><span>{money(cartTotal)}</span></p><button onClick={()=>setNotice("Demo checkout only. No payment is collected.")} className="mt-5 w-full rounded-xl bg-cyan-300 px-4 py-3 text-sm font-extrabold text-slate-950">Checkout demo</button><p className="mt-3 text-xs leading-5 text-slate-500">This demo does not collect payment.</p></aside></div>}</section>}
+
+        {page === "Wishlist" && <section className="mx-auto min-h-[65vh] max-w-7xl px-4 py-14 sm:px-6 lg:px-8"><SectionHeading eyebrow="SAVED FOR LATER" title="Your wishlist" description="Your favourite laptops in one place." />{wishlist.length ? <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{wishlist.map(product=><ProductCard key={product.id} product={product}/>)}</div> : <div className="rounded-3xl border border-white/10 px-6 py-16 text-center"><Heart className="mx-auto text-slate-500" size={32}/><h2 className="mt-4 text-xl font-bold">No saved laptops yet</h2><p className="mt-2 text-sm text-slate-400">Tap the heart on any laptop you like.</p><button onClick={()=>goTo("Products")} className="mt-6 rounded-xl bg-cyan-300 px-5 py-3 text-sm font-bold text-slate-950">Browse laptops</button></div>}</section>}
+
+        {page === "Account" && <section className="mx-auto flex min-h-[65vh] max-w-xl items-center px-4 py-14"><div className="w-full rounded-3xl border border-white/10 bg-[#0b1022] p-7 sm:p-9"><div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-cyan-300/30 bg-cyan-300/10 text-cyan-300"><UserRound size={26}/></div><h1 className="mt-5 text-center text-3xl font-black">Welcome to LaptopHub</h1><p className="mt-2 text-center text-sm text-slate-400">This is a front-end demo account screen.</p><form onSubmit={e=>{e.preventDefault();setNotice("Demo sign-in only. Authentication is not connected.");}} className="mt-7 space-y-4"><label className="block text-sm font-semibold">Email address<input type="email" required placeholder="you@example.com" className="mt-2 w-full rounded-xl border border-white/10 bg-[#050816] px-4 py-3 outline-none focus:border-cyan-300/60"/></label><label className="block text-sm font-semibold">Password<input type="password" required minLength="4" placeholder="Enter a demo password" className="mt-2 w-full rounded-xl border border-white/10 bg-[#050816] px-4 py-3 outline-none focus:border-cyan-300/60"/></label><button className="w-full rounded-xl bg-cyan-300 px-5 py-3 font-extrabold text-slate-950">Sign in (demo)</button></form><p className="mt-4 text-center text-xs text-slate-500">No account details are saved or sent.</p></div></section>}
+      </main>
+
+      <footer className="border-t border-white/10 bg-[#030510]">
+        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:grid-cols-2 lg:grid-cols-4 lg:px-8">
+          <div><button onClick={()=>goTo("Home")} className="text-left text-xl font-black">Laptop<span className="text-cyan-300">Hub</span></button><p className="mt-3 max-w-xs text-sm leading-6 text-slate-400">Thoughtful technology for students, creators, gamers, and the next big idea.</p></div>
+          <div><h3 className="mb-3 font-bold">Explore</h3>{[["All laptops","Products"],["Categories","Categories"],["About us","About"]].map(([label,target])=><button key={target} onClick={()=>goTo(target)} className="mb-2 block text-sm text-slate-400 hover:text-cyan-300">{label}</button>)}</div>
+          <div><h3 className="mb-3 font-bold">Your account</h3>{[["Wishlist","Wishlist"],["Shopping cart","Cart"],["Login / Register","Account"]].map(([label,target])=><button key={target} onClick={()=>goTo(target)} className="mb-2 block text-sm text-slate-400 hover:text-cyan-300">{label}</button>)}</div>
+          <div><h3 className="mb-3 font-bold">The LaptopHub promise</h3><p className="flex items-center gap-2 text-sm text-slate-400"><Truck size={16} className="text-cyan-300"/> Convenient browsing</p><p className="mt-2 flex items-center gap-2 text-sm text-slate-400"><ShieldCheck size={16} className="text-cyan-300"/> Clear product details</p><p className="mt-2 flex items-center gap-2 text-sm text-slate-400"><Headphones size={16} className="text-cyan-300"/> Helpful support</p></div>
         </div>
-      )}
-    </>
+        <div className="border-t border-white/[.06] py-4 text-center text-xs text-slate-600">© {new Date().getFullYear()} LaptopHub · Demo store, sample products and prices</div>
+      </footer>
+    </div>
   );
 }
-
-/* ------------------------------------------------------------------ */
-/*  Styles                                                             */
-/* ------------------------------------------------------------------ */
-
-const CSS = `
-@import url("https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap");
-
-.lhx, .lhx *, .lhx-cmd-backdrop, .lhx-cmd-backdrop *, .lhx-drawer-backdrop, .lhx-drawer-backdrop * { box-sizing: border-box; }
-
-.lhx, .lhx-cmd-backdrop, .lhx-drawer-backdrop {
-  --bg: #0d0f12;
-  --panel: #151a22;
-  --panel-2: #1b212b;
-  --line: #262d39;
-  --text: #eef2f6;
-  --muted: #98a2b3;
-  --ember: #ff5b1f;
-  --ember-hover: #ff7340;
-  --ice: #7fd8ff;
-  font-family: "Sora", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  color: var(--text);
-}
-
-.lhx {
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-  width: 100%;
-  background: rgba(13, 15, 18, .94);
-  backdrop-filter: saturate(1.4) blur(14px);
-  border-bottom: 1px solid var(--line);
-}
-.lhx a { color: inherit; text-decoration: none; }
-.lhx button, .lhx-cmd-backdrop button, .lhx-drawer-backdrop button { font: inherit; color: inherit; }
-.lhx :focus-visible, .lhx-cmd-backdrop :focus-visible, .lhx-drawer-backdrop :focus-visible {
-  outline: 2px solid var(--ice);
-  outline-offset: 2px;
-}
-
-.lhx-wrap { width: min(1400px, calc(100% - 56px)); margin: 0 auto; }
-
-/* Announcement */
-.lhx-announce { background: var(--ember); color: #1a0a03; font-size: 12px; font-weight: 600; transition: margin .25s ease, opacity .25s ease; }
-.lhx-announce-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 34px; }
-.lhx-announce-text { margin: 0; animation: lhx-swap .4s ease both; }
-.lhx-announce-link { text-decoration: underline !important; text-underline-offset: 3px; white-space: nowrap; }
-.lhx.is-compact .lhx-announce { margin-top: -34px; opacity: 0; pointer-events: none; }
-
-/* Main bar */
-.lhx-main { display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 80px; transition: min-height .25s ease; }
-.lhx.is-compact .lhx-main { min-height: 64px; }
-
-.lhx-brand { display: inline-flex; align-items: center; gap: 12px; flex: 0 0 auto; }
-.lhx-logo { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; background: var(--ember); color: #1a0a03; }
-.lhx-brand-copy { display: flex; flex-direction: column; gap: 3px; }
-.lhx-brand-name { font-size: 19px; font-weight: 800; letter-spacing: -.04em; line-height: 1; }
-.lhx-brand-name b { color: var(--ember); font-weight: 800; }
-.lhx-brand-sub { font-size: 11px; color: var(--muted); font-weight: 500; }
-
-.lhx-links { display: flex; align-items: center; gap: 2px; }
-.lhx-link {
-  position: relative; display: inline-flex; align-items: center; gap: 6px; min-height: 42px; padding: 0 14px;
-  color: var(--muted) !important; background: transparent; border: 0; border-radius: 10px; cursor: pointer;
-  font-size: 13.5px; font-weight: 600; transition: color .2s ease, background .2s ease;
-}
-.lhx-link:hover, .lhx-link.open { color: var(--text) !important; background: var(--panel); }
-.lhx-link.active { color: var(--text) !important; }
-.lhx-link.active::after {
-  content: ""; position: absolute; left: 14px; right: 14px; bottom: 3px; height: 2px; border-radius: 2px; background: var(--ember);
-}
-.lhx-divider { width: 1px; height: 20px; margin: 0 6px; background: var(--line); }
-.lhx-link svg { color: var(--ember); flex: 0 0 auto; }
-.lhx-cat-btn svg { transition: transform .2s ease; }
-.lhx-cat-btn.open svg { transform: rotate(180deg); }
-
-/* Mega menu */
-.lhx-cats { position: relative; }
-.lhx-mega {
-  position: absolute; top: calc(100% + 14px); left: 50%; transform: translateX(-42%);
-  display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 0;
-  width: min(900px, calc(100vw - 48px)); overflow: hidden;
-  background: var(--panel); border: 1px solid var(--line); border-radius: 18px;
-  box-shadow: 0 30px 80px rgba(0, 0, 0, .55); animation: lhx-pop .18s ease both;
-}
-.lhx-mega::before { content: ""; position: absolute; top: -16px; left: 0; right: 0; height: 16px; }
-.lhx-mega-list { display: grid; gap: 4px; padding: 14px; }
-.lhx-cat-row {
-  display: grid; grid-template-columns: 44px minmax(0, 1fr) 28px; gap: 14px; align-items: start;
-  padding: 14px; border-radius: 12px; border: 1px solid transparent; transition: background .2s ease, border-color .2s ease;
-}
-.lhx-cat-row:hover, .lhx-cat-row:focus-visible { background: var(--panel-2); border-color: var(--line); }
-.lhx-cat-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: #0d0f12; color: var(--ember); border: 1px solid var(--line); }
-.lhx-cat-body { display: grid; gap: 5px; }
-.lhx-cat-body strong { font-size: 14px; font-weight: 700; }
-.lhx-cat-body > span { font-size: 12px; color: var(--muted); line-height: 1.55; }
-.lhx-chips { display: flex !important; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
-.lhx-chips em { font-style: normal; font-size: 11px; font-weight: 600; color: var(--ice); padding: 3px 8px; border-radius: 999px; background: rgba(127, 216, 255, .08); border: 1px solid rgba(127, 216, 255, .18); }
-.lhx-cat-go { color: var(--muted); opacity: 0; transform: translate(-4px, 4px); transition: opacity .2s ease, transform .2s ease; }
-.lhx-cat-row:hover .lhx-cat-go, .lhx-cat-row:focus-visible .lhx-cat-go { opacity: 1; transform: none; color: var(--ember); }
-
-.lhx-mega-side { padding: 28px 26px; background: #10141b; border-left: 1px solid var(--line); display: flex; flex-direction: column; }
-.lhx-mega-side h3 { margin: 0; font-size: 18px; letter-spacing: -.03em; }
-.lhx-mega-side p { margin: 8px 0 18px; font-size: 12.5px; line-height: 1.65; color: var(--muted); }
-.lhx-budget { display: grid; gap: 8px; }
-.lhx-budget a {
-  display: flex; align-items: center; justify-content: space-between; padding: 13px 14px; border-radius: 10px;
-  background: var(--panel); border: 1px solid var(--line); font-size: 13px; font-weight: 600; transition: border-color .2s ease, color .2s ease;
-}
-.lhx-budget a:hover { border-color: var(--ember); color: var(--ember); }
-.lhx-mega-all { margin-top: auto; padding-top: 18px; display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--ember); }
-
-/* Actions */
-.lhx-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
-.lhx-search {
-  display: inline-flex; align-items: center; gap: 10px; min-height: 42px; padding: 0 10px 0 13px; border-radius: 10px;
-  background: var(--panel); border: 1px solid var(--line); color: var(--muted); cursor: pointer; transition: border-color .2s ease, color .2s ease;
-}
-.lhx-search:hover { border-color: #3a4558; color: var(--text); }
-.lhx-search-text { font-size: 12.5px; font-weight: 500; min-width: 150px; text-align: left; }
-.lhx kbd, .lhx-cmd-backdrop kbd {
-  font: 600 10.5px "Sora", system-ui, sans-serif; padding: 3px 6px; border-radius: 6px; color: #c3cad6; background: #0d0f12; border: 1px solid var(--line);
-}
-
-.lhx-icon-btn {
-  position: relative; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 10px; cursor: pointer;
-  background: var(--panel); border: 1px solid var(--line); color: var(--text) !important; transition: border-color .2s ease;
-}
-.lhx-icon-btn:hover { border-color: #3a4558; }
-.lhx-badge {
-  position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
-  display: grid; place-items: center; background: var(--ember); color: #1a0a03; font-size: 10.5px; font-weight: 800;
-}
-
-.lhx-signin {
-  display: inline-flex; align-items: center; gap: 8px; min-height: 42px; padding: 0 14px; border-radius: 10px;
-  border: 1px solid var(--line); font-size: 13px; font-weight: 600; transition: background .2s ease, border-color .2s ease;
-}
-.lhx-signin:hover { background: var(--panel); border-color: #3a4558; }
-.lhx-join {
-  display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 0 18px; border-radius: 10px;
-  background: var(--ember); color: #1a0a03 !important; font-size: 13px; font-weight: 700; white-space: nowrap; transition: background .2s ease, transform .2s ease;
-}
-.lhx-join:hover { background: var(--ember-hover); transform: translateY(-1px); }
-
-.lhx-burger { display: none; place-items: center; width: 42px; height: 42px; border-radius: 10px; cursor: pointer; background: var(--panel); border: 1px solid var(--line); }
-
-/* Scroll progress */
-.lhx-progress { position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; pointer-events: none; }
-.lhx-progress span { display: block; height: 100%; background: var(--ember); transform-origin: left; transition: transform .1s linear; }
-
-/* Drawer */
-.lhx-drawer-backdrop { position: fixed; inset: 0; z-index: 1500; background: rgba(5, 6, 8, .72); backdrop-filter: blur(4px); animation: lhx-fade .18s ease both; }
-.lhx-drawer {
-  position: absolute; top: 0; right: 0; bottom: 0; width: min(380px, 92vw); display: flex; flex-direction: column; gap: 16px;
-  padding: 18px; overflow-y: auto; background: var(--bg); border-left: 1px solid var(--line); animation: lhx-slide .22s ease both;
-}
-.lhx-drawer a { color: inherit; text-decoration: none; }
-.lhx-drawer-head { display: flex; align-items: center; justify-content: space-between; }
-.lhx-drawer-search {
-  display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 14px; border-radius: 12px; cursor: pointer;
-  background: var(--panel); border: 1px solid var(--line); color: var(--muted); font-size: 13px;
-}
-.lhx-drawer-links { display: grid; gap: 6px; }
-.lhx-drawer-links > a, .lhx-drawer-cat-btn {
-  display: flex; align-items: center; justify-content: space-between; min-height: 52px; padding: 0 16px; border-radius: 12px; cursor: pointer;
-  background: var(--panel); border: 1px solid var(--line); font-size: 14px; font-weight: 600; width: 100%; text-align: left;
-}
-.lhx-drawer-links > a.active { border-color: var(--ember); }
-.lhx-drawer-cat-btn .flip { display: inline-flex; transform: rotate(180deg); }
-.lhx-drawer-label { margin: 8px 2px 0; color: #7d8799; font-size: 12px; font-weight: 600; }
-.lhx-drawer-sub { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.lhx-drawer-sub a.active { border: 1px solid var(--ember); }
-.lhx-drawer-sub a { display: flex; align-items: center; gap: 12px; min-height: 46px; padding: 0 14px; border-radius: 10px; background: #10141b; color: #c3cad6; font-size: 13px; }
-.lhx-drawer-sub a svg { color: var(--ember); }
-.lhx-drawer-foot { display: grid; gap: 8px; margin-top: auto; }
-.lhx-drawer-foot a { width: 100%; }
-
-/* Command palette */
-.lhx-cmd-backdrop {
-  position: fixed; inset: 0; z-index: 2000; display: flex; align-items: flex-start; justify-content: center;
-  padding: min(14vh, 110px) 16px 24px; background: rgba(5, 6, 8, .78); backdrop-filter: blur(8px); animation: lhx-fade .15s ease both;
-}
-.lhx-cmd { width: min(600px, 100%); overflow: hidden; border-radius: 16px; background: var(--panel); border: 1px solid #323b4a; box-shadow: 0 30px 100px rgba(0, 0, 0, .6); animation: lhx-pop .18s ease both; }
-.lhx-cmd-top { display: flex; align-items: center; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--line); color: var(--ember); }
-.lhx-cmd-top input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; color: var(--text); font: 500 14.5px "Sora", system-ui, sans-serif; }
-.lhx-cmd-top input::placeholder { color: #6b7587; }
-.lhx-cmd-top button { background: transparent; border: 0; cursor: pointer; }
-.lhx-cmd-results { max-height: min(400px, 52vh); overflow-y: auto; padding: 8px; }
-.lhx-cmd-label { padding: 12px 12px 6px; color: #7d8799; font-size: 11.5px; font-weight: 600; }
-.lhx-cmd-item {
-  display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px; text-align: left; cursor: pointer;
-  background: transparent; border: 1px solid transparent; border-radius: 10px; color: var(--text);
-}
-.lhx-cmd-item.selected { background: var(--panel-2); border-color: #333d4e; }
-.lhx-cmd-ico { display: grid; place-items: center; flex: 0 0 auto; width: 34px; height: 34px; border-radius: 9px; background: #0d0f12; border: 1px solid var(--line); color: var(--ember); }
-.lhx-cmd-copy { display: grid; gap: 2px; flex: 1; min-width: 0; }
-.lhx-cmd-copy strong { font-size: 13px; font-weight: 600; }
-.lhx-cmd-copy small { color: var(--muted); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lhx-cmd-item > svg { color: var(--muted); flex: 0 0 auto; }
-.lhx-cmd-empty { display: grid; gap: 6px; padding: 34px 16px; text-align: center; font-size: 13px; }
-.lhx-cmd-empty span { color: var(--muted); font-size: 12px; }
-.lhx-cmd-foot { display: flex; flex-wrap: wrap; gap: 8px 18px; padding: 12px 18px; background: #10141b; border-top: 1px solid var(--line); color: #7d8799; font-size: 11px; }
-.lhx-cmd-foot kbd { margin-right: 4px; }
-
-@keyframes lhx-pop { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
-.lhx-mega { animation-name: lhx-pop-mega; }
-@keyframes lhx-pop-mega { from { opacity: 0; transform: translate(-42%, -6px); } to { opacity: 1; transform: translate(-42%, 0); } }
-@keyframes lhx-fade { from { opacity: 0; } to { opacity: 1; } }
-@keyframes lhx-slide { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
-@keyframes lhx-swap { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-
-/* Responsive */
-@media (max-width: 1240px) {
-  .lhx-search-text, .lhx-search kbd { display: none; }
-  .lhx-search { padding: 0 12px; }
-  .lhx-search-text { min-width: 0; }
-}
-@media (max-width: 1100px) {
-  .lhx-wrap { width: calc(100% - 36px); }
-  .lhx-link { padding: 0 10px; }
-  .lhx-signin { display: none; }
-}
-@media (max-width: 1080px) {
-  .lhx-links, .lhx-join, .lhx-search { display: none; }
-  .lhx-burger { display: grid; }
-  .lhx-main { min-height: 68px; }
-  .lhx.is-compact .lhx-main { min-height: 60px; }
-  .lhx-announce-link { display: none; }
-  .lhx-announce-row { justify-content: center; text-align: center; }
-  /* keep a search button reachable on mobile */
-  .lhx-actions::before {
-    content: ""; display: none;
-  }
-}
-@media (max-width: 520px) {
-  .lhx-wrap { width: calc(100% - 24px); }
-  .lhx-brand-sub { display: none; }
-  .lhx-hide-sm { display: none; }
-  .lhx-announce { font-size: 11px; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .lhx *, .lhx-cmd-backdrop *, .lhx-drawer-backdrop *,
-  .lhx-cmd, .lhx-drawer, .lhx-mega { animation-duration: .01ms !important; transition-duration: .01ms !important; }
-}
-`;
